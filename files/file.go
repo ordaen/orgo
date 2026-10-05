@@ -9,11 +9,14 @@ import (
 	"image/png"
 	"uuid"
 
-	"github.com/nfnt/resize"
 	"github.com/ordaen/orgo/model"
 	"github.com/ordaen/orgo/pg"
 	"github.com/ordaen/orgo/repo"
+	"golang.org/x/image/draw"
 )
+
+// avatarSize is the maximum width and height of the avatar images.
+const avatarSize = 176
 
 var _ pg.BeforeCreateHook = (*File)(nil)
 
@@ -52,11 +55,9 @@ func (m *File) BeforeCreate(ctx context.Context, tx pg.Tx) error {
 	buf := new(bytes.Buffer)
 	switch mime {
 	case "jpeg":
-		resized := resize.Thumbnail(176, 176, img, resize.NearestNeighbor)
-		err = jpeg.Encode(buf, resized, &jpeg.Options{Quality: 90})
+		err = jpeg.Encode(buf, thumbnail(img, avatarSize), &jpeg.Options{Quality: 90})
 	case "png":
-		resized := resize.Thumbnail(176, 176, img, resize.NearestNeighbor)
-		err = png.Encode(buf, resized)
+		err = png.Encode(buf, thumbnail(img, avatarSize))
 	default:
 		return fmt.Errorf("unsupported image format '%s'", mime)
 	}
@@ -67,4 +68,22 @@ func (m *File) BeforeCreate(ctx context.Context, tx pg.Tx) error {
 	m.Size = buf.Len()
 	m.Data = buf.Bytes()
 	return nil
+}
+
+// thumbnail scales img down to fit in a size x size square, keeping its aspect ratio.
+// An image fitting in the square is returned unchanged.
+func thumbnail(img image.Image, size int) image.Image {
+	b := img.Bounds()
+	w, h := b.Dx(), b.Dy()
+	if w <= size && h <= size {
+		return img
+	}
+	if w >= h {
+		w, h = size, max(1, h*size/w)
+	} else {
+		w, h = max(1, w*size/h), size
+	}
+	dst := image.NewRGBA(image.Rect(0, 0, w, h))
+	draw.CatmullRom.Scale(dst, dst.Bounds(), img, b, draw.Src, nil)
+	return dst
 }

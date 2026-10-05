@@ -60,6 +60,23 @@ func TestAvatarResize(t *testing.T) {
 	}
 }
 
+func TestThumbnail(t *testing.T) {
+	cases := []struct{ w, h, wantW, wantH int }{
+		{400, 200, 176, 88},
+		{200, 400, 88, 176},
+		{300, 300, 176, 176},
+		{1000, 2, 176, 1},
+		{100, 50, 100, 50},
+		{176, 176, 176, 176},
+	}
+	for _, c := range cases {
+		img := image.NewRGBA(image.Rect(10, 10, 10+c.w, 10+c.h))
+		b := thumbnail(img, 176).Bounds()
+		assert.Equal(t, c.wantW, b.Dx(), "%dx%d", c.w, c.h)
+		assert.Equal(t, c.wantH, b.Dy(), "%dx%d", c.w, c.h)
+	}
+}
+
 func TestAvatarInvalidImage(t *testing.T) {
 	_, err := Files.Create(&File{Name: t.Name(), Type: "avatar", Mime: "image/jpeg", Data: []byte("test")})
 	assert.ErrorIs(t, err, image.ErrFormat)

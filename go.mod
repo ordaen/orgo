@@ -5,9 +5,9 @@ go 1.27.1
 require (
 	github.com/jackc/pgx/v5 v5.11.0
 	github.com/joho/godotenv v1.5.1
-	github.com/nfnt/resize v0.0.0-20180221191011-83c6a9932646
 	github.com/stretchr/testify v1.12.1
 	golang.org/x/crypto v0.57.0
+	golang.org/x/image v0.31.0
 )
 
 require (
