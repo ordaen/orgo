@@ -4,11 +4,9 @@ import (
 	"crypto/sha1"
 	"crypto/subtle"
 	"encoding/base64"
-	"fmt"
 	"io"
 	"regexp"
 
-	"github.com/ordaen/orgo/utils"
 	"golang.org/x/crypto/bcrypt"
 )
 
@@ -46,31 +44,40 @@ func (t Password) Valid(s string) bool {
 	ps := t.parts()
 	switch ps.Meth {
 	case "crypt":
-		err := bcrypt.CompareHashAndPassword([]byte(ps.Pass), []byte(s))
-		if err == nil {
-			return true
-		}
+		return bcrypt.CompareHashAndPassword([]byte(ps.Pass), []byte(s)) == nil
+	case "ssha1":
+		hp := HashPassword(ps.Meth, s, ps.salt()).parts()
+		return subtle.ConstantTimeCompare([]byte(ps.Pass), []byte(hp.Pass)) == 1
 	}
-	hp := HashPassword(ps.Meth, s, ps.salt()).parts()
-	return subtle.ConstantTimeCompare([]byte(ps.Pass), []byte(hp.Pass)) == 1
+	return false
 }
 
-// NewPassword creates new sha1 hash
-func NewPassword(s string) Password {
-	return HashPassword("ssha1", s, utils.RandomString(4))
+// NeedsRehash returns true when the password is not a bcrypt hash. Such a password should be replaced
+// with NewPassword after it is verified with Valid, for example on login.
+func (t Password) NeedsRehash() bool {
+	return t.parts().Meth != "crypt"
 }
 
-// HashPassword creates password hash
+// NewPassword creates a new bcrypt hash of the password. It returns bcrypt.ErrPasswordTooLong
+// when the password is longer than 72 bytes.
+func NewPassword(s string) (Password, error) {
+	hash, err := bcrypt.GenerateFromPassword([]byte(s), bcrypt.DefaultCost)
+	if err != nil {
+		return "", err
+	}
+	return Password("{crypt}" + string(hash)), nil
+}
+
+// HashPassword creates a password hash with the legacy salted SHA-1 method "ssha1", it is used to verify
+// the passwords created with it. Other methods return an empty password, use NewPassword for new passwords.
 func HashPassword(meth, pass, salt string) Password {
-	var pwd string
 	switch meth {
 	case "ssha1":
 		h := sha1.New()
 		io.WriteString(h, pass)
 		io.WriteString(h, salt)
 		res := append(h.Sum(nil), []byte(salt)...)
-		pwd = base64.StdEncoding.EncodeToString(res)
-		return Password(pwd)
+		return Password(base64.StdEncoding.EncodeToString(res))
 	}
-	return Password(fmt.Sprintf("{%s}%s", meth, pwd))
+	return ""
 }
