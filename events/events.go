@@ -35,6 +35,7 @@ var (
 // PubSub publishes events and subscribes to them, it is implemented by Hub.
 type PubSub interface {
 	Pub(m Model)
+	PubDoc(name string, m Model)
 	PubEvent(name string)
 	PubData(name string, data any)
 	PubID(tableName string, id model.ModelID)
@@ -53,7 +54,7 @@ type Event struct {
 	Data any
 }
 
-// Doc returns the model published by Pub, or nil.
+// Doc returns the model published by Pub or PubDoc, or nil.
 func (e Event) Doc() Model {
 	if v, ok := e.Data.(Model); ok {
 		return v

@@ -33,6 +33,11 @@ func (h *Hub) Pub(m Model) {
 	h.publish(Event{Name: m.TableName(), Data: copyModel(m)})
 }
 
+// PubDoc publishes the model as the named event, the subscribers get a shallow copy like for Pub.
+func (h *Hub) PubDoc(name string, m Model) {
+	h.publish(Event{Name: name, Data: copyModel(m)})
+}
+
 // PubEvent publishes an event without data.
 func (h *Hub) PubEvent(name string) {
 	h.publish(Event{Name: name})

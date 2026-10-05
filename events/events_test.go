@@ -100,6 +100,17 @@ func TestPub(t *testing.T) {
 	assert.Equal(t, "john", doc.Name, "the subscribers get a copy")
 }
 
+func TestPubDoc(t *testing.T) {
+	h := NewHub("TEST")
+	ch := collect(t, h, "user.activated")
+	u := &user{ID: 8, Name: "john"}
+	h.PubDoc("user.activated", u)
+	u.Name = "changed after publishing"
+	e := receive(t, ch)
+	assert.Equal(t, "8", e.ID())
+	assert.Equal(t, "john", e.Doc().(*user).Name, "the subscribers get a copy")
+}
+
 func TestPubVariants(t *testing.T) {
 	h := NewHub("TEST")
 	ch := collect(t, h, All)
