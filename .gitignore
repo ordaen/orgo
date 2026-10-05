@@ -1,0 +1,13 @@
+!.keep
+/_ignored/*
+*.test
+/prof.*
+*_custom_test.go
+.env*
+/bbb
+node_modules
+.vscode
+.idea
+.cursor
+.DS_Store
+
