@@ -3,7 +3,7 @@ package logger
 import (
 	"github.com/ordaen/orgo/changes"
 	"github.com/ordaen/orgo/model"
-	"github.com/ordaen/orgo/pg"
+	"github.com/ordaen/orgo/repo"
 	"github.com/ordaen/orgo/types"
 )
 
@@ -27,32 +27,37 @@ func Debug(action string) *Log {
 	return NewLog(DEBUG, "system", action)
 }
 
-func UpdateRecord[T model.Model](m T, user *types.User, changes changes.Changes, fields ...string) error {
-	mod, err := pg.UpdateModel(m, fields...)
-	if err != nil {
-		Error("update").WithUser(user).WithModel(mod).WithMessage(err.Error()).WithChanges(changes).Create()
-		return err
-	}
-	Info("update").WithUser(user).WithModel(mod).WithChanges(changes).Create()
-	return nil
-}
-
-func DeleteRecord[T model.Model](m T, user *types.User) error {
-	mod, err := pg.DeleteModel(m)
-	if err != nil {
-		Error("delete").WithUser(user).WithModel(mod).WithMessage(err.Error()).Create()
-		return err
-	}
-	Info("delete").WithUser(user).WithModel(mod).WithData(m).Create()
-	return nil
-}
-
-func CreateRecord[T model.Model](m T, user *types.User) error {
-	mod, err := pg.CreateModel(m)
+// CreateRecord creates the record with the repository and logs the creation by the user.
+// It returns the created record, the error is logged too.
+func CreateRecord[T model.Model](r repo.Repository[T], m T, user *types.User) (T, error) {
+	mod, err := r.Create(m)
 	if err != nil {
 		Error("create").WithUser(user).WithModel(mod).WithMessage(err.Error()).Create()
-		return err
+		return mod, err
 	}
 	Info("create").WithUser(user).WithModel(mod).Create()
+	return mod, nil
+}
+
+// UpdateRecord updates the record with the repository and logs the changes by the user.
+// When fields are given, only these columns are updated. It returns the updated record, the error is logged too.
+func UpdateRecord[T model.Model](r repo.Repository[T], m T, user *types.User, changes changes.Changes, fields ...string) (T, error) {
+	mod, err := r.Update(m, fields...)
+	if err != nil {
+		Error("update").WithUser(user).WithModel(mod).WithMessage(err.Error()).WithChanges(changes).Create()
+		return mod, err
+	}
+	Info("update").WithUser(user).WithModel(mod).WithChanges(changes).Create()
+	return mod, nil
+}
+
+// DeleteRecord deletes the record with the repository and logs the deletion by the user, with the deleted record
+// as the log data. The error is logged too.
+func DeleteRecord[T model.Model](r repo.Repository[T], m T, user *types.User) error {
+	if err := r.Delete(m); err != nil {
+		Error("delete").WithUser(user).WithModel(m).WithMessage(err.Error()).Create()
+		return err
+	}
+	Info("delete").WithUser(user).WithModel(m).WithData(m).Create()
 	return nil
 }

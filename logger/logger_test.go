@@ -7,6 +7,7 @@ import (
 	"github.com/ordaen/orgo/changes"
 	"github.com/ordaen/orgo/model"
 	"github.com/ordaen/orgo/pg"
+	"github.com/ordaen/orgo/repo"
 	"github.com/ordaen/orgo/types"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -108,19 +109,23 @@ func TestDebug(t *testing.T) {
 	assert.Equal(t, "action1", r.Action)
 }
 
+var testModels = repo.New(&testModel{})
+
 func TestRecords(t *testing.T) {
 	require.NoError(t, pg.ClearTables("logs", "test_models"))
 	user := &types.User{ID: model.ID(2), Name: "John Doe", Type: "admins"}
 
-	m := &testModel{Name: "first"}
-	require.NoError(t, CreateRecord(m, user))
-	m, err := pg.Query(new(testModel)).First()
+	m, err := CreateRecord(testModels, &testModel{Name: "first"}, user)
 	require.NoError(t, err)
+	require.NotZero(t, m.ID)
 
 	m.Name = "second"
 	ch := changes.Changes{{Key: "name", From: "first", To: "second"}}
-	require.NoError(t, UpdateRecord(m, user, ch, "name"))
-	require.NoError(t, DeleteRecord(m, user))
+	m, err = UpdateRecord(testModels, m, user, ch, "name")
+	require.NoError(t, err)
+	assert.Equal(t, "second", m.Name)
+	require.NoError(t, DeleteRecord(testModels, m, user))
+	assert.Zero(t, testModels.Count())
 
 	logs, err := pg.Query(new(Log)).Order("id").Select()
 	require.NoError(t, err)
@@ -136,14 +141,33 @@ func TestRecords(t *testing.T) {
 	assert.Contains(t, string(logs[2].Data), `"name": "second"`)
 }
 
+// TestRecordsCached checks the records are written through the repository, so its cache sees them.
+func TestRecordsCached(t *testing.T) {
+	require.NoError(t, pg.ClearTables("logs", "test_models"))
+	cached := repo.NewCached(&testModel{}, nil)
+
+	m, err := CreateRecord(cached, &testModel{Name: "first"}, nil)
+	require.NoError(t, err)
+	assert.Equal(t, "first", cached.FindByID(m.ID).Name)
+
+	m.Name = "second"
+	_, err = UpdateRecord(cached, m, nil, nil, "name")
+	require.NoError(t, err)
+	assert.Equal(t, "second", cached.FindByID(m.ID).Name)
+
+	require.NoError(t, DeleteRecord(cached, m, nil))
+	assert.Zero(t, cached.FindByID(m.ID).ID)
+}
+
 func TestRecordError(t *testing.T) {
 	require.NoError(t, pg.ClearTables("logs", "test_models"))
-	err := DeleteRecord(&testModel{ID: 1}, nil)
+	err := DeleteRecord(testModels, &testModel{ID: 1}, nil)
 	assert.ErrorIs(t, err, pg.ErrNoRowsAffected)
 
 	r, err := pg.Query(new(Log)).First()
 	require.NoError(t, err)
 	assert.Equal(t, ERROR, r.Level)
 	assert.Equal(t, "delete", r.Action)
+	assert.Equal(t, "1", r.OwnerID)
 	assert.NotEmpty(t, r.Message)
 }
