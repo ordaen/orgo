@@ -28,7 +28,6 @@ type CronRecord struct {
 
 	LogID     model.ID  `json:"log_id,omitempty"`
 	Type      string    `json:"type,readonly"`
-	Plugin    string    `json:"plugin,readonly"`
 	Handler   string    `json:"handler,readonly"`
 	Name      string    `json:"name,readonly"`
 	Spec      string    `json:"spec"`
@@ -73,6 +72,11 @@ func (m *CronRecord) UpdateSpec(spec string) error {
 		return m.Activate()
 	}
 	return nil
+}
+
+// Registered reports whether the job of the record is registered, the job of a disabled plugin is not
+func (m *CronRecord) Registered() bool {
+	return m.job() != nil
 }
 
 func (m *CronRecord) job() *Job {

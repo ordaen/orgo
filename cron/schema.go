@@ -18,7 +18,10 @@ const SQLSchemaRecords = `CREATE TABLE IF NOT EXISTS cron_records (
 			"updated" Timestamptz DEFAULT now(),
 PRIMARY KEY ( "id", "handler" ) );
 
-ALTER TABLE cron_records ADD COLUMN IF NOT EXISTS "log_id" Bigint;`
+ALTER TABLE cron_records ADD COLUMN IF NOT EXISTS "log_id" Bigint;
+
+-- the group of a job was its plugin, it is its type now, the plugin column is not used
+UPDATE cron_records SET type = plugin, plugin = NULL WHERE plugin IS NOT NULL AND plugin <> '';`
 
 // SQLSchemaLogs creates the cron_logs table
 const SQLSchemaLogs = `CREATE TABLE IF NOT EXISTS cron_logs (

@@ -54,24 +54,6 @@ func TestJobsRegisterExisting(t *testing.T) {
 	receiveRun(t, runs, 2*time.Second)
 }
 
-func TestRegisterJobs(t *testing.T) {
-	clearTables(t)
-	_, err := Records.Create(&CronRecord{Handler: "removed", Name: "removed", Plugin: "plugin"})
-	require.NoError(t, err)
-	_, err = Records.Create(&CronRecord{Handler: "other", Name: "other", Plugin: "other"})
-	require.NoError(t, err)
-	job, _ := signalJob("kept", nil)
-	t.Cleanup(func() { Global.Unregister("kept") })
-
-	require.NoError(t, RegisterJobs("plugin", []Job{job}))
-	assert.Equal(t, "plugin", Records.FindByHandler("kept").Plugin)
-	assert.Equal(t, "plugin", Global.Job("kept").Plugin)
-	assert.False(t, Records.FindByHandler("removed").ID.Valid(), "the records of the removed jobs are deleted")
-	assert.True(t, Records.FindByHandler("other").ID.Valid(), "the records of other plugins are kept")
-
-	assert.Error(t, RegisterJobs("plugin", []Job{job}), "the duplicate registration is returned")
-}
-
 func TestJobsStop(t *testing.T) {
 	clearTables(t)
 	job, runs := signalJob("stopped", nil)

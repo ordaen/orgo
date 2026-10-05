@@ -23,11 +23,11 @@ type JobOptions struct {
 
 // Job type
 type Job struct {
-	ID        string
-	Name      string
-	Spec      string
+	ID   string
+	Name string
+	Spec string
+	// Type is the group of the job, like "system" or the name of a plugin, see RegisterGroup
 	Type      string
-	Plugin    string
 	Active    bool
 	CanEnable func() error
 	Func      Func
