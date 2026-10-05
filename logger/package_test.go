@@ -1,6 +1,7 @@
 package logger
 
 import (
+	"context"
 	"log"
 	"os"
 	"testing"
@@ -24,6 +25,18 @@ func beforeAll() {
 	pg.Schema.Register("test_models", createTestModels)
 	if err := pg.Connect(testConfig()); err != nil {
 		log.Fatalln("Error opening database connection: ", err)
+	}
+	// the tables are created again, so every run starts with their current definitions
+	sqls := []string{
+		`DROP TABLE IF EXISTS logs;`,
+		SQLSchema,
+		`DROP TABLE IF EXISTS test_models;`,
+		createTestModels,
+	}
+	for _, sql := range sqls {
+		if _, err := pg.DB.Exec(context.Background(), sql); err != nil {
+			log.Fatalln("Error executing SQL: ", err)
+		}
 	}
 }
 
