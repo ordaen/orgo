@@ -18,15 +18,20 @@ type repoEvents struct {
 	creates, updates, deletes <-chan events.Event
 }
 
-// subscribeEvents subscribes to the global event channels until the test ends.
+// subscribeEvents subscribes to all events of the global hubs until the test ends.
 func subscribeEvents(t *testing.T) repoEvents {
 	t.Helper()
-	sub := func(c *events.Channel) <-chan events.Event {
+	sub := func(h *events.Hub) <-chan events.Event {
 		ch := make(chan events.Event, 100)
-		t.Cleanup(c.Sub(func(e events.Event) { ch <- e }))
+		t.Cleanup(h.Sub(events.All, func(e events.Event) { ch <- e }))
 		return ch
 	}
 	return repoEvents{creates: sub(events.Creates), updates: sub(events.Updates), deletes: sub(events.Deletes)}
+}
+
+// eventOf is the name and the ID of an event.
+type eventOf struct {
+	Name, ID string
 }
 
 func receiveEvent(t *testing.T, ch <-chan events.Event) events.Event {
@@ -61,17 +66,26 @@ func TestBaseWithEvents(t *testing.T) {
 
 	created, err := repo.Create(&baseModel{Name: "john"})
 	require.NoError(t, err)
-	want := events.Event{TableName: "base_models", ID: created.ID.String()}
-	assert.Equal(t, want, receiveEvent(t, evs.creates))
+	want := eventOf{Name: "base_models", ID: created.ID.String()}
+	e := receiveEvent(t, evs.creates)
+	assert.Equal(t, want, eventOf{e.Name, e.ID()})
+	doc, ok := e.Doc().(*baseModel)
+	require.True(t, ok)
+	assert.Equal(t, created, doc)
+	assert.NotSame(t, created, doc, "the subscribers get a copy")
 
 	created.Name = "jane"
 	_, err = repo.Update(created)
 	require.NoError(t, err)
-	assert.Equal(t, want, receiveEvent(t, evs.updates))
+	e = receiveEvent(t, evs.updates)
+	assert.Equal(t, want, eventOf{e.Name, e.ID()})
+	assert.Equal(t, "jane", e.Doc().(*baseModel).Name)
 
 	err = repo.Delete(created)
 	require.NoError(t, err)
-	assert.Equal(t, want, receiveEvent(t, evs.deletes))
+	e = receiveEvent(t, evs.deletes)
+	assert.Equal(t, want, eventOf{e.Name, e.ID()})
+	assert.Equal(t, "jane", e.Doc().(*baseModel).Name, "the deleted record")
 
 	// finds do not publish
 	_ = repo.FindMany("")
@@ -135,7 +149,7 @@ func TestBaseWithContextKeepsEvents(t *testing.T) {
 
 	created, err := repo.Create(&baseModel{Name: "john"})
 	require.NoError(t, err)
-	assert.Equal(t, created.ID.String(), receiveEvent(t, evs.creates).ID)
+	assert.Equal(t, created.ID.String(), receiveEvent(t, evs.creates).ID())
 }
 
 func TestCachedWithEvents(t *testing.T) {
@@ -145,16 +159,19 @@ func TestCachedWithEvents(t *testing.T) {
 
 	created, err := repo.Create(&baseModel{Name: "john"})
 	require.NoError(t, err)
-	want := events.Event{TableName: "base_models", ID: created.ID.String()}
-	assert.Equal(t, want, receiveEvent(t, evs.creates))
+	want := eventOf{Name: "base_models", ID: created.ID.String()}
+	e := receiveEvent(t, evs.creates)
+	assert.Equal(t, want, eventOf{e.Name, e.ID()})
 
 	_, err = repo.Update(created)
 	require.NoError(t, err)
-	assert.Equal(t, want, receiveEvent(t, evs.updates))
+	e = receiveEvent(t, evs.updates)
+	assert.Equal(t, want, eventOf{e.Name, e.ID()})
 
 	err = repo.WithContext(context.Background()).Delete(created)
 	require.NoError(t, err)
-	assert.Equal(t, want, receiveEvent(t, evs.deletes))
+	e = receiveEvent(t, evs.deletes)
+	assert.Equal(t, want, eventOf{e.Name, e.ID()})
 
 	// a cache repository without the option does not publish
 	plain := NewCached(&baseModel{}, nil)

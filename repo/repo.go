@@ -208,12 +208,12 @@ func (r *Base[T]) Delete(m T) error {
 	return err
 }
 
-// publish returns a function that publishes the committed record to the channel when events are enabled
+// publish returns a function that publishes the committed record to the hub when events are enabled
 // and the change did not fail. It passes the result through, so it wraps the model functions.
-func (r *Base[T]) publish(ch *events.Channel) func(T, error) (T, error) {
+func (r *Base[T]) publish(hub *events.Hub) func(T, error) (T, error) {
 	return func(m T, err error) (T, error) {
 		if err == nil && r.events {
-			ch.PubModel(m)
+			hub.Pub(m)
 		}
 		return m, err
 	}
