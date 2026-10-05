@@ -1,6 +1,9 @@
 package pg
 
-import "context"
+import (
+	"context"
+	"slices"
+)
 
 // BeforeCreateHook is implemented by models that run code before they are inserted.
 // It is called inside the create transaction, before the insert query is built,
@@ -50,4 +53,38 @@ type AfterDeleteHook interface {
 // A non-nil result is returned unchanged in place of the database error, nil keeps the database error.
 type DBErrorHandler interface {
 	HandleDBError(op string, err *PgError) error
+}
+
+// TxHook runs in the transaction of a model write, see WithTxHook.
+type TxHook func(ctx context.Context, tx Tx) error
+
+// txHooksKey is the context key of the hooks added by WithTxHook.
+type txHooksKey struct{}
+
+// WithTxHook returns a copy of ctx running hook in the transaction of the model writes run with it, like
+// UpdateModelWithContext and the repositories created by WithContext, after the After hook of the model and before
+// the commit. An error of the hook rolls the write back and is returned unchanged. It commits the related writes
+// with the model write, like a record of the change:
+//
+//	ctx = pg.WithTxHook(ctx, func(ctx context.Context, tx pg.Tx) error {
+//		_, err := tx.Exec(ctx, "INSERT INTO changes ...")
+//		return err
+//	})
+//	_, err := Orders.WithContext(ctx).Update(order, "status")
+//
+// The hooks of ctx run in the order they were added.
+func WithTxHook(ctx context.Context, hook TxHook) context.Context {
+	hooks, _ := ctx.Value(txHooksKey{}).([]TxHook)
+	return context.WithValue(ctx, txHooksKey{}, append(slices.Clip(hooks), hook))
+}
+
+// runTxHooks runs the hooks added to ctx by WithTxHook.
+func runTxHooks(ctx context.Context, tx Tx) error {
+	hooks, _ := ctx.Value(txHooksKey{}).([]TxHook)
+	for _, hook := range hooks {
+		if err := hook(ctx, tx); err != nil {
+			return err
+		}
+	}
+	return nil
 }

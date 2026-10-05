@@ -309,3 +309,68 @@ func TestDeleteModelInvalidNoHooks(t *testing.T) {
 	require.ErrorIs(t, err, ErrNoRowsAffected)
 	assert.Equal(t, []string{"before-delete:999999:"}, hookCalls)
 }
+
+func TestWithTxHook(t *testing.T) {
+	require.NoError(t, ClearTables("base_models"))
+	var calls []string
+	ctx := WithTxHook(context.Background(), func(ctx context.Context, tx Tx) error {
+		calls = append(calls, "first")
+		_, err := tx.Exec(ctx, `INSERT INTO base_models (name) VALUES ('from hook')`)
+		return err
+	})
+	ctx = WithTxHook(ctx, func(ctx context.Context, tx Tx) error {
+		calls = append(calls, "second")
+		return nil
+	})
+
+	m, err := CreateModelWithContext(ctx, &ctxModel{Name: "model"})
+	require.NoError(t, err)
+	assert.Equal(t, []string{"first", "second"}, calls, "the hooks run in the order they were added")
+	n, err := CountWhere("base_models", "name IN ('model', 'from hook')")
+	require.NoError(t, err)
+	assert.Equal(t, 2, n, "the hook writes commit with the model write")
+
+	calls = nil
+	m.Name = "updated"
+	_, err = UpdateModelWithContext(ctx, m, "name")
+	require.NoError(t, err)
+	_, err = DeleteModelWithContext(ctx, m)
+	require.NoError(t, err)
+	assert.Equal(t, []string{"first", "second", "first", "second"}, calls, "the hooks run for every write")
+
+	// the writes without the context do not run them
+	calls = nil
+	_, err = CreateModel(&ctxModel{Name: "plain"})
+	require.NoError(t, err)
+	assert.Empty(t, calls)
+}
+
+func TestWithTxHookErrorRollsBack(t *testing.T) {
+	require.NoError(t, ClearTables("base_models"))
+	errHook := errors.New("hook failed")
+	ctx := WithTxHook(context.Background(), func(ctx context.Context, tx Tx) error {
+		if _, err := tx.Exec(ctx, `INSERT INTO base_models (name) VALUES ('from hook')`); err != nil {
+			return err
+		}
+		return errHook
+	})
+	_, err := CreateModelWithContext(ctx, &ctxModel{Name: "model"})
+	assert.ErrorIs(t, err, errHook)
+	n, err := Count("base_models")
+	require.NoError(t, err)
+	assert.Zero(t, n, "the model write and the hook writes are rolled back")
+}
+
+func TestWithTxHookDoesNotChangeParent(t *testing.T) {
+	var calls []string
+	hook := func(name string) TxHook {
+		return func(context.Context, Tx) error { calls = append(calls, name); return nil }
+	}
+	parent := WithTxHook(context.Background(), hook("parent"))
+	a := WithTxHook(parent, hook("a"))
+	b := WithTxHook(parent, hook("b"))
+	require.NoError(t, runTxHooks(a, nil))
+	require.NoError(t, runTxHooks(b, nil))
+	require.NoError(t, runTxHooks(parent, nil))
+	assert.Equal(t, []string{"parent", "a", "parent", "b", "parent"}, calls)
+}

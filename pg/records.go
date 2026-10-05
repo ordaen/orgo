@@ -190,6 +190,9 @@ func writeModel[T Model](ctx context.Context, model T, op writeOp[T]) (T, error)
 	if err := op.after(ctx, tx, written); err != nil {
 		return model, err
 	}
+	if err := runTxHooks(ctx, tx); err != nil {
+		return model, err
+	}
 
 	// the deferred constraints are checked on commit
 	if err := tx.Commit(ctx); err != nil {
