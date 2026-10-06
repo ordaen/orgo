@@ -33,13 +33,13 @@ func (d *document) TableName() string { return "documents" }
 
 var errNotPaid = errors.New("not paid")
 
-// orderStatuses are new -> paid -> shipped, new -> canceled, paid -> canceled. Entering shipped fails
-// when shipFails is set.
+// orderStatuses are new -> paid -> shipped, new -> canceled, paid -> canceled. shipped is final, canceled
+// can switch to any status. Entering shipped fails when shipFails is set.
 func orderStatuses(shipFails *bool) []Status[*order] {
 	return []Status[*order]{
 		{ID: "new", Name: "New", CanSwitchTo: []string{"paid", "canceled"}},
 		{ID: "paid", Name: "Paid", Event: "order.paid", CanSwitchTo: []string{"shipped", "canceled"}},
-		{ID: "shipped", Name: "Shipped", Info: "final", Enter: func(o *order, prev Status[*order]) error {
+		{ID: "shipped", Name: "Shipped", Info: "final", Final: true, Enter: func(o *order, prev Status[*order]) error {
 			if *shipFails {
 				return errNotPaid
 			}
@@ -107,6 +107,32 @@ func TestChangeStatusInvalidTransition(t *testing.T) {
 	o.Status = "unknown"
 	assert.EqualError(t, m.ChangeStatus(o, m.FindStatus("paid"), "", nil), `invalid state transition from unknown status "unknown" to Paid`)
 	assert.Empty(t, StatusRecords.FindByOwner(o))
+}
+
+// TestChangeStatusWithoutCanSwitchTo checks a status without CanSwitchTo can switch to any status.
+func TestChangeStatusWithoutCanSwitchTo(t *testing.T) {
+	orders := repo.New(&order{})
+	m, _ := setupMachine(t, orders)
+	o := newOrder(t, orders)
+	require.NoError(t, m.ChangeStatus(o, m.FindStatus("canceled"), "", nil))
+
+	require.NoError(t, m.ChangeStatus(o, m.FindStatus("new"), "", nil))
+	assert.Equal(t, "new", o.Status)
+	assert.Equal(t, "new", orders.FindByID(o.ID).Status, "the status is stored")
+	assert.Len(t, StatusRecords.FindByOwner(o), 2)
+}
+
+// TestChangeStatusFinal checks the owner cannot switch from a final status.
+func TestChangeStatusFinal(t *testing.T) {
+	orders := repo.New(&order{})
+	m, _ := setupMachine(t, orders)
+	o := newOrder(t, orders)
+	require.NoError(t, m.ChangeStatus(o, m.FindStatus("paid"), "", nil))
+	require.NoError(t, m.ChangeStatus(o, m.FindStatus("shipped"), "", nil))
+
+	assert.EqualError(t, m.ChangeStatus(o, m.FindStatus("canceled"), "", nil), "invalid state transition from final status Shipped to Canceled")
+	assert.Equal(t, "shipped", o.Status)
+	assert.Len(t, StatusRecords.FindByOwner(o), 2)
 }
 
 // TestChangeStatusUsesMachineStatus checks the status of the machine is entered, not the given copy.
@@ -184,13 +210,16 @@ func TestNewMachineInvalid(t *testing.T) {
 	assert.PanicsWithValue(t, "statuser: status a switches to unknown status b", func() {
 		NewMachine(r, Status[*order]{ID: "a", CanSwitchTo: []string{"b"}})
 	})
+	assert.PanicsWithValue(t, "statuser: final status a switches to other statuses", func() {
+		NewMachine(r, Status[*order]{ID: "a", Final: true, CanSwitchTo: []string{"b"}}, Status[*order]{ID: "b"})
+	})
 }
 
 func TestMachineStatuses(t *testing.T) {
 	m := NewMachine(repo.New(&order{}), orderStatuses(new(bool))...)
 	short := m.Statuses()
 	require.Len(t, short, 4)
-	assert.Equal(t, ShortStatus{ID: "shipped", Name: "Shipped", Info: "final"}, short[2])
+	assert.Equal(t, ShortStatus{ID: "shipped", Name: "Shipped", Info: "final", Final: true}, short[2])
 	short[0].CanSwitchTo[0] = "changed"
 	assert.Equal(t, "paid", m.FindStatus("new").CanSwitchTo[0], "Statuses returns copies")
 	assert.Equal(t, []string{"order.paid"}, m.Events())

@@ -11,9 +11,11 @@ type ShortStatus struct {
 	Name        string   `json:"name"`
 	Info        string   `json:"info,omitempty"`
 	CanSwitchTo []string `json:"can_switch_to,omitempty"`
+	Final       bool     `json:"final,omitempty"`
 }
 
-// Status of a Machine. The owner can switch from it to the statuses CanSwitchTo. Event is published
+// Status of a Machine. The owner can switch from it to the statuses CanSwitchTo, or to any status when
+// CanSwitchTo is empty. The owner cannot switch from a Final status. Event is published
 // to events.System with the owner when it enters the status.
 type Status[T Statuser] struct {
 	ID          string             `json:"id"`
@@ -21,6 +23,7 @@ type Status[T Statuser] struct {
 	Info        string             `json:"info,omitempty"`
 	Event       string             `json:"event,omitempty"`
 	CanSwitchTo []string           `json:"can_switch_to,omitempty"`
+	Final       bool               `json:"final,omitempty"`
 	Enter       StatusEnterFunc[T] `json:"-"`
 }
 
@@ -31,7 +34,7 @@ func (s Status[T]) Valid() bool {
 
 // Short returns the status without its functions.
 func (s Status[T]) Short() ShortStatus {
-	return ShortStatus{ID: s.ID, Name: s.Name, Info: s.Info, CanSwitchTo: slices.Clone(s.CanSwitchTo)}
+	return ShortStatus{ID: s.ID, Name: s.Name, Info: s.Info, CanSwitchTo: slices.Clone(s.CanSwitchTo), Final: s.Final}
 }
 
 // Statuses are the statuses of a Machine.

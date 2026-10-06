@@ -12,7 +12,8 @@ import (
 )
 
 // NewMachine returns a machine changing the statuses of the owners stored by the repository. It panics when
-// the statuses have an empty or duplicate ID, or a transition to a status not in them, like regexp.MustCompile.
+// the statuses have an empty or duplicate ID, a transition to a status not in them, or a Final status with
+// transitions, like regexp.MustCompile.
 func NewMachine[T Statuser](r repo.Repository[T], statuses ...Status[T]) *Machine[T] {
 	ss := Statuses[T](statuses)
 	for i, s := range ss {
@@ -21,6 +22,9 @@ func NewMachine[T Statuser](r repo.Repository[T], statuses ...Status[T]) *Machin
 		}
 		if ss.FindIndex(s.ID) != i {
 			panic(fmt.Sprintf("statuser: duplicate status %s", s.ID))
+		}
+		if s.Final && len(s.CanSwitchTo) > 0 {
+			panic(fmt.Sprintf("statuser: final status %s switches to other statuses", s.ID))
 		}
 		for _, to := range s.CanSwitchTo {
 			if !ss.Contains(to) {
@@ -42,7 +46,8 @@ func (m *Machine[T]) FindStatus(status string) Status[T] {
 	return m.statuses.Find(status)
 }
 
-// ChangeStatus switches the owner to the status with the ID of state, when its current status can switch to it.
+// ChangeStatus switches the owner to the status with the ID of state, when its current status can switch to it:
+// it is not Final and its CanSwitchTo is empty or contains the ID.
 // It calls the Enter function of the status, then updates the status column through the repository and records
 // the change with the reason and the issuer in the same transaction, so both are written or neither is.
 // On error the owner keeps its previous status. On success the Event of the status is published with a copy
@@ -62,7 +67,11 @@ func (m *Machine[T]) ChangeStatusWithContext(ctx context.Context, owner T, state
 	if !cur.Valid() {
 		return fmt.Errorf("invalid state transition from unknown status %q to %s", prevID, next.Name)
 	}
-	if !slices.Contains(cur.CanSwitchTo, next.ID) {
+	if cur.Final {
+		return fmt.Errorf("invalid state transition from final status %s to %s", cur.Name, next.Name)
+	}
+	// a status without CanSwitchTo can switch to any status
+	if len(cur.CanSwitchTo) > 0 && !slices.Contains(cur.CanSwitchTo, next.ID) {
 		return fmt.Errorf("invalid state transition from %s to %s", cur.Name, next.Name)
 	}
 	if next.Enter != nil {
