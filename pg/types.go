@@ -43,6 +43,19 @@ func (mi *modelInfo) getField(name string) *fieldInfo {
 	return nil
 }
 
+// HasColumn reports whether the model type T, a struct or a pointer to it, maps a field to the column.
+// It validates column names given by the clients, like a sort column.
+func HasColumn[T any](column string) bool {
+	t := reflect.TypeFor[T]()
+	if t.Kind() == reflect.Pointer {
+		t = t.Elem()
+	}
+	if t.Kind() != reflect.Struct {
+		return false
+	}
+	return globalCache.getModelInfo(t).getField(column) != nil
+}
+
 type structCache struct {
 	types sync.Map // reflect.Type -> *modelInfo
 }

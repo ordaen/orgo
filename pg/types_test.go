@@ -255,3 +255,12 @@ func TestModelType(t *testing.T) {
 	kind := "Special"
 	assert.Equal(t, "Special", ModelType(&typesPanickingType{Kind: &kind}))
 }
+
+func TestHasColumn(t *testing.T) {
+	assert.True(t, HasColumn[*baseModel]("name"))
+	assert.True(t, HasColumn[baseModel]("id"))
+	assert.True(t, HasColumn[*baseModel]("created"), "the columns of the embedded structs")
+	assert.False(t, HasColumn[*baseModel]("missing"))
+	assert.False(t, HasColumn[*baseModel]("name; DROP TABLE x"))
+	assert.False(t, HasColumn[int]("id"))
+}
