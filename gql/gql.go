@@ -7,11 +7,11 @@ import (
 	"fmt"
 	"net/http"
 	"slices"
+	"strings"
 
 	"github.com/gin-gonic/gin"
 	"github.com/ordaen/orgo/changes"
 	"github.com/ordaen/orgo/events"
-	"github.com/ordaen/orgo/pool"
 	"github.com/ordaen/orgo/sessions"
 	"github.com/ordaen/orgo/types"
 )
@@ -76,8 +76,7 @@ func EnvToString(env map[string]any, exclude []string) string {
 		return ""
 	}
 
-	buf := pool.Get()
-	defer pool.Put(buf)
+	var buf strings.Builder
 	keys := make([]string, 0, len(env))
 	for k := range env {
 		if !slices.Contains(exclude, k) {
@@ -88,7 +87,7 @@ func EnvToString(env map[string]any, exclude []string) string {
 	for _, k := range keys {
 		buf.WriteString(k)
 		buf.WriteString(": ")
-		fmt.Fprintf(buf, "%v", env[k])
+		fmt.Fprintf(&buf, "%v", env[k])
 		buf.WriteRune('\n')
 	}
 	return buf.String()
