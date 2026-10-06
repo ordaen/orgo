@@ -22,8 +22,7 @@ func beforeAll() {
 	if err := godotenv.Load("../.env_test"); err != nil {
 		log.Fatalln("Error loading env configuration", err)
 	}
-	pg.Schema.Register("sessions", SQLSchemaSessions)
-	pg.Schema.Register("blocked_ips", SQLSchemaBlockedIPs)
+	RegisterSchema()
 	if err := pg.Connect(testConfig()); err != nil {
 		log.Fatalln("Error opening database connection: ", err)
 	}

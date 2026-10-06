@@ -1,5 +1,14 @@
 package statuser
 
+import (
+	"github.com/ordaen/orgo/pg"
+)
+
+// RegisterSchema registers the status_records table with pg.Schema, created by pg.Connect.
+func RegisterSchema() {
+	pg.Schema.Register("status_records", SQLSchema)
+}
+
 // SQLSchema creates the status_records table
 const SQLSchema = `CREATE TABLE IF NOT EXISTS status_records (
 		"id" Bigserial,

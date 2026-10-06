@@ -20,6 +20,8 @@ orgo requires Go 1.27 or later and PostgreSQL.
 plain structs, to table rows by their fields.
 
 - The tables and functions are registered with `pg.Schema`, usually in `init` functions, and created by `pg.Connect`.
+  The orgo packages with tables (`cron`, `files`, `logger`, `sessions`, `settings`, `statuser`, and `gql` for
+  the tables it uses) register them with their `RegisterSchema` function, called before `pg.Connect`.
 - `pg.Config.Schema` is created when it is missing and set as the `search_path` of every connection.
 - `pg.Insert`, `pg.UpdateModel`, `pg.DeleteModel` and `pg.Query` write and query models.
 - Models can implement hooks (`BeforeCreate`, `AfterUpdate`, …) that run inside the write transaction.

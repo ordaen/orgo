@@ -1,5 +1,19 @@
 package cron
 
+import (
+	"github.com/ordaen/orgo/pg"
+	"github.com/ordaen/orgo/settings"
+)
+
+// RegisterSchema registers the cron tables and the settings table the cron settings are stored in with pg.Schema,
+// created by pg.Connect.
+func RegisterSchema() {
+	settings.RegisterSchema()
+	pg.Schema.Register("cron_records", SQLSchemaRecords)
+	pg.Schema.Register("cron_logs", SQLSchemaLogs)
+	pg.Schema.Register("cron_log_messages", SQLSchemaLogMessages)
+}
+
 // SQLSchemaRecords creates the cron_records table
 const SQLSchemaRecords = `CREATE TABLE IF NOT EXISTS cron_records (
 			"id" Bigserial,

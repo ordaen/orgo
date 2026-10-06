@@ -1,5 +1,14 @@
 package logger
 
+import (
+	"github.com/ordaen/orgo/pg"
+)
+
+// RegisterSchema registers the logs table with pg.Schema, created by pg.Connect.
+func RegisterSchema() {
+	pg.Schema.Register("logs", SQLSchema)
+}
+
 // SQLSchema creates the logs table
 const SQLSchema = `CREATE TABLE IF NOT EXISTS logs (
 			"id" Bigserial,

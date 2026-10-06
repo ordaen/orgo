@@ -1,5 +1,15 @@
 package sessions
 
+import (
+	"github.com/ordaen/orgo/pg"
+)
+
+// RegisterSchema registers the sessions and blocked_ips tables with pg.Schema, created by pg.Connect.
+func RegisterSchema() {
+	pg.Schema.Register("sessions", SQLSchemaSessions)
+	pg.Schema.Register("blocked_ips", SQLSchemaBlockedIPs)
+}
+
 // SQLSchemaSessions creates the sessions table
 const SQLSchemaSessions = `CREATE TABLE IF NOT EXISTS sessions (
 		"id" UUid NOT NULL,

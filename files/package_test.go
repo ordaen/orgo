@@ -20,7 +20,7 @@ func beforeAll() {
 	if err := godotenv.Load("../.env_test"); err != nil {
 		log.Fatalln("Error loading env configuration", err)
 	}
-	pg.Schema.Register("files", SQLSchema)
+	RegisterSchema()
 	if err := pg.Connect(testConfig()); err != nil {
 		log.Fatalln("Error opening database connection: ", err)
 	}

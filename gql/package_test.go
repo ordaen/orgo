@@ -9,7 +9,6 @@ import (
 	"github.com/joho/godotenv"
 	"github.com/ordaen/orgo/logger"
 	"github.com/ordaen/orgo/pg"
-	"github.com/ordaen/orgo/sessions"
 )
 
 func TestMain(m *testing.M) {
@@ -23,10 +22,8 @@ func beforeAll() {
 	if err := godotenv.Load("../.env_test"); err != nil {
 		log.Fatalln("Error loading env configuration", err)
 	}
-	pg.Schema.Register("logger", logger.SQLSchema)
 	// the cached repositories of sessions are loaded on connect
-	pg.Schema.Register("sessions", sessions.SQLSchemaSessions)
-	pg.Schema.Register("blocked_ips", sessions.SQLSchemaBlockedIPs)
+	RegisterSchema()
 	if err := pg.Connect(testConfig()); err != nil {
 		log.Fatalln("Error opening database connection: ", err)
 	}

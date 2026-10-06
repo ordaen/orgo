@@ -1,5 +1,14 @@
 package files
 
+import (
+	"github.com/ordaen/orgo/pg"
+)
+
+// RegisterSchema registers the files table with pg.Schema, created by pg.Connect.
+func RegisterSchema() {
+	pg.Schema.Register("files", SQLSchema)
+}
+
 // SQLSchema creates the files table
 const SQLSchema = `CREATE TABLE IF NOT EXISTS files (
 		"id" Bigserial,
