@@ -112,11 +112,13 @@ func (c *client) assertNoMessage() {
 // connected waits until the chan has n connections.
 func connected(t *testing.T, h *Chan, n int) {
 	t.Helper()
-	assert.Eventually(t, func() bool {
-		h.mu.RLock()
-		defer h.mu.RUnlock()
-		return len(h.connections) == n
-	}, time.Second, 5*time.Millisecond)
+	assert.Eventually(t, func() bool { return connections(h) == n }, time.Second, 5*time.Millisecond)
+}
+
+func connections(h *Chan) int {
+	h.mu.RLock()
+	defer h.mu.RUnlock()
+	return len(h.connections)
 }
 
 func TestAuthorize(t *testing.T) {
@@ -275,28 +277,35 @@ func TestSlowConnectionClosed(t *testing.T) {
 	require.NoError(t, err)
 	t.Cleanup(func() { slowConn.Close() })
 	require.NoError(t, slowConn.WriteJSON(map[string]any{"cmd": "authorize", "data": "user-1"}))
+	_, msg, err := slowConn.ReadMessage()
+	require.NoError(t, err)
+	require.JSONEq(t, `{"chan":"authorized"}`, string(msg))
 	fast := dial(t, url)
 	fast.authorize(2)
 	connected(t, h, 2)
 
+	// the socket buffers of the slow connection take an unknown number of messages before its queue fills,
+	// so the messages are sent until it is closed, each one after the fast connection received the previous one
 	big := strings.Repeat("x", 64<<10)
 	done := make(chan struct{})
 	go func() {
 		defer close(done)
-		for range 200 {
+		for deadline := time.Now().Add(5 * time.Second); connections(h) == 2 && time.Now().Before(deadline); {
 			h.SendToChannel("big", big)
-		}
-	}()
-	go func() {
-		for range fast.msgs {
+			select {
+			case <-fast.msgs:
+			case <-time.After(time.Second):
+				return
+			}
 		}
 	}()
 	select {
 	case <-done:
-	case <-time.After(5 * time.Second):
+	case <-time.After(10 * time.Second):
 		t.Fatal("sending blocked on the slow connection")
 	}
-	connected(t, h, 1)
+	require.Equal(t, 1, connections(h), "the slow connection is closed")
+	assert.Equal(t, model.ID(2), h.targets(func(*connection) bool { return true })[0].userID(), "the fast connection is kept")
 }
 
 func TestConcurrent(t *testing.T) {
