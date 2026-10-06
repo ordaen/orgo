@@ -6,6 +6,7 @@ import (
 	"path/filepath"
 	"sync"
 	"testing"
+	"testing/synctest"
 	"time"
 
 	"github.com/stretchr/testify/assert"
@@ -226,14 +227,25 @@ func TestNewInvalid(t *testing.T) {
 
 // TestPurgeLoop checks the expired entries are purged in the background every TTL.
 func TestPurgeLoop(t *testing.T) {
-	c, err := New(filepath.Join(t.TempDir(), "cache.db"), 50*time.Millisecond)
-	require.NoError(t, err)
-	defer c.Close()
-	require.NoError(t, c.Set([]byte("v"), "b", "key"))
-	assert.Eventually(t, func() bool {
-		_, err := c.db.Get("b", "key")
-		return err == ErrNotFound
-	}, 2*time.Second, 20*time.Millisecond)
+	file := filepath.Join(t.TempDir(), "cache.db")
+	synctest.Test(t, func(t *testing.T) {
+		c, err := New(file, time.Hour)
+		require.NoError(t, err)
+		defer c.Close()
+		// the entry expires a second after the first purge
+		time.Sleep(time.Second)
+		require.NoError(t, c.Set([]byte("v"), "b", "key"))
+
+		time.Sleep(time.Hour - time.Second)
+		synctest.Wait()
+		_, err = c.db.Get("b", "key")
+		require.NoError(t, err, "the entry is kept until it expires")
+
+		time.Sleep(time.Hour)
+		synctest.Wait()
+		_, err = c.db.Get("b", "key")
+		assert.ErrorIs(t, err, ErrNotFound, "the expired entry is purged by the next purge")
+	})
 }
 
 func TestConcurrent(t *testing.T) {
