@@ -51,6 +51,7 @@ type AfterDeleteHook interface {
 // like a unique violation into "ip: 1.1.1.1 already exists". It is called on the given model with the operation,
 // "create", "update" or "delete", after the write or its commit failed. The transaction is rolled back.
 // A non-nil result is returned unchanged in place of the database error, nil keeps the database error.
+// The failed query of a handled error is not logged as failed, with Config.Debug it is logged at the debug level.
 type DBErrorHandler interface {
 	HandleDBError(op string, err *PgError) error
 }

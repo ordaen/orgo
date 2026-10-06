@@ -107,12 +107,67 @@ func batchFrom(ctx context.Context) *batchTrace {
 
 func (l *queryLogger) log(ctx context.Context, sql string, d time.Duration, tag string, err error) {
 	if err != nil {
-		loggerOrDefault(l.logger).LogAttrs(ctx, slog.LevelError, "orgo: query failed",
-			slog.String("sql", sql), slog.Duration("duration", d), slog.Any("error", err))
+		if h, ok := ctx.Value(heldQueryKey{}).(*heldQuery); ok && h.hold(l, ctx, sql, d, err) {
+			return
+		}
+		l.logFailed(ctx, slog.LevelError, "orgo: query failed", sql, d, err)
 		return
 	}
 	if l.debug {
 		loggerOrDefault(l.logger).LogAttrs(ctx, slog.LevelInfo, "orgo: query",
 			slog.String("sql", sql), slog.Duration("duration", d), slog.String("result", tag))
+	}
+}
+
+// logFailed logs the failed query with its SQL and error.
+func (l *queryLogger) logFailed(ctx context.Context, level slog.Level, msg, sql string, d time.Duration, err error) {
+	loggerOrDefault(l.logger).LogAttrs(ctx, level, msg,
+		slog.String("sql", sql), slog.Duration("duration", d), slog.Any("error", err))
+}
+
+type heldQueryKey struct{}
+
+// heldQuery is the failed query of a model write, held until the DBErrorHandler of the model ran: a database error
+// turned into an application error is the expected behavior of the model, not a failed query. See holdFailedQuery.
+type heldQuery struct {
+	logger *queryLogger // nil when no query is held
+	ctx    context.Context
+	sql    string
+	d      time.Duration
+	err    error
+}
+
+// holdFailedQuery returns ctx holding the failed query run with it, logged by release, when model has
+// a DBErrorHandler. Otherwise it returns ctx and nil, and the failed queries are logged when they end.
+func holdFailedQuery(ctx context.Context, model any) (context.Context, *heldQuery) {
+	if _, ok := model.(DBErrorHandler); !ok {
+		return ctx, nil
+	}
+	h := &heldQuery{}
+	return context.WithValue(ctx, heldQueryKey{}, h), h
+}
+
+// hold keeps the failed query, it reports false when another one is held already.
+func (h *heldQuery) hold(l *queryLogger, ctx context.Context, sql string, d time.Duration, err error) bool {
+	if h.logger != nil {
+		return false
+	}
+	*h = heldQuery{logger: l, ctx: ctx, sql: sql, d: d, err: err}
+	return true
+}
+
+// release logs the held failed query: as a failed query, or when handled is set, at the debug level with Debug
+// and not at all without it. It does nothing when no query is held, so it can be deferred and called again.
+func (h *heldQuery) release(handled bool) {
+	if h == nil || h.logger == nil {
+		return
+	}
+	held := *h
+	*h = heldQuery{}
+	switch {
+	case !handled:
+		held.logger.logFailed(held.ctx, slog.LevelError, "orgo: query failed", held.sql, held.d, held.err)
+	case held.logger.debug:
+		held.logger.logFailed(held.ctx, slog.LevelDebug, "orgo: query failed, handled by the model", held.sql, held.d, held.err)
 	}
 }

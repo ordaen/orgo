@@ -26,13 +26,15 @@ func InsertWithContext[T Model](ctx context.Context, model T) (T, error) {
 	if err != nil {
 		return model, err
 	}
-	rows, err := DB.Query(ctx, query.SQL, query.Args...)
+	qctx, held := holdFailedQuery(ctx, model)
+	defer held.release(false)
+	rows, err := DB.Query(qctx, query.SQL, query.Args...)
 	if err != nil {
-		return model, handleDBError(model, "create", Errorf("insert into %s: %w", model.TableName(), err))
+		return model, handleDBError(model, "create", Errorf("insert into %s: %w", model.TableName(), err), held)
 	}
 	res, err := MapRowsLimited[T](rows, 1)
 	if err != nil {
-		return model, handleDBError(model, "create", err)
+		return model, handleDBError(model, "create", err, held)
 	}
 	if len(res) == 0 {
 		return model, ErrNoRowsAffected
@@ -173,14 +175,17 @@ func writeModel[T Model](ctx context.Context, model T, op writeOp[T]) (T, error)
 	if err != nil {
 		return model, err
 	}
-	rows, err := tx.Query(ctx, query.SQL, query.Args...)
+	// the failed write and commit are logged after the DBErrorHandler, the hook queries when they end
+	qctx, held := holdFailedQuery(ctx, model)
+	defer held.release(false)
+	rows, err := tx.Query(qctx, query.SQL, query.Args...)
 	if err != nil {
-		return model, handleDBError(model, op.name, Errorf("%s %s: %w", op.verb, model.TableName(), err))
+		return model, handleDBError(model, op.name, Errorf("%s %s: %w", op.verb, model.TableName(), err), held)
 	}
 	// the constraint violations of the write are returned by the rows
 	res, err := MapRowsLimited[T](rows, 1)
 	if err != nil {
-		return model, handleDBError(model, op.name, err)
+		return model, handleDBError(model, op.name, err, held)
 	}
 	if len(res) == 0 {
 		return model, ErrNoRowsAffected
@@ -195,15 +200,16 @@ func writeModel[T Model](ctx context.Context, model T, op writeOp[T]) (T, error)
 	}
 
 	// the deferred constraints are checked on commit
-	if err := tx.Commit(ctx); err != nil {
-		return model, handleDBError(model, op.name, Errorf("commit transaction: %w", err))
+	if err := tx.Commit(qctx); err != nil {
+		return model, handleDBError(model, op.name, Errorf("commit transaction: %w", err), held)
 	}
 	return written, nil
 }
 
 // handleDBError returns the error of the DBErrorHandler of model for the PgError in err,
 // or err when there is no PgError, no handler or the handler returns nil.
-func handleDBError[T Model](model T, op string, err error) error {
+// The held failed query is released as handled when the handler returns an error.
+func handleDBError[T Model](model T, op string, err error, held *heldQuery) error {
 	handler, ok := any(model).(DBErrorHandler)
 	if !ok {
 		return err
@@ -213,6 +219,7 @@ func handleDBError[T Model](model T, op string, err error) error {
 		return err
 	}
 	if handled := handler.HandleDBError(op, pgErr); handled != nil {
+		held.release(true)
 		return handled
 	}
 	return err

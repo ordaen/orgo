@@ -56,7 +56,8 @@ type Config struct {
 	Schema string
 	// AllowTableDrops allows DROP TABLE and DROP FOREIGN TABLE in the registered schema queries and functions.
 	AllowTableDrops bool
-	// Debug logs all queries with the Logger. Without it only the failed queries are logged.
+	// Debug logs all queries with the Logger. Without it only the failed queries are logged, except the failed
+	// writes handled by the DBErrorHandler of their model, which Debug logs at the debug level.
 	// The query args are never logged.
 	Debug bool
 	// Logger logs the queries and the errors of the repositories using the global DB. When it is nil,

@@ -1,10 +1,13 @@
 package pg
 
 import (
+	"bytes"
 	"context"
 	"errors"
 	"fmt"
+	"log/slog"
 	"testing"
+	"time"
 
 	"github.com/ordaen/orgo/model"
 	"github.com/stretchr/testify/assert"
@@ -175,3 +178,68 @@ type sentinelIP struct {
 
 func (m *sentinelIP) TableName() string                    { return "blocked_ips" }
 func (m *sentinelIP) HandleDBError(string, *PgError) error { return m.err }
+
+// TestDBErrorHandlerLogs checks the failed writes handled by the DBErrorHandler are not logged as failed queries.
+func TestDBErrorHandlerLogs(t *testing.T) {
+	setupDBErrorTest(t)
+	logs := captureLogs(t)
+	_, err := CreateModel(&blockedIP{IP: "1.1.1.1", Code: "a"})
+	require.NoError(t, err)
+
+	_, err = CreateModel(&blockedIP{IP: "1.1.1.1", Code: "b"})
+	assert.EqualError(t, err, "ip: 1.1.1.1 already exists")
+	_, err = Insert(&blockedIP{IP: "1.1.1.1", Code: "b"})
+	assert.EqualError(t, err, "ip: 1.1.1.1 already exists")
+	// the deferred constraint fails on commit
+	_, err = CreateModel(&blockedIP{IP: "2.2.2.2", Code: "a"})
+	assert.EqualError(t, err, "code: a already exists")
+	assert.Empty(t, logs(), "the handled errors are not logged")
+
+	// the database errors kept by the handler and of the models without a handler are logged
+	handleDBErrors = false
+	_, err = CreateModel(&blockedIP{IP: "1.1.1.1", Code: "b"})
+	require.Error(t, err)
+	_, err = Insert(&plainBlockedIP{IP: "1.1.1.1"})
+	require.Error(t, err)
+	records := logs()
+	require.Len(t, records, 2)
+	for _, r := range records {
+		assert.Equal(t, "ERROR", r.Level)
+		assert.Equal(t, "orgo: query failed", r.Msg)
+		assert.Contains(t, r.SQL, `INSERT INTO "blocked_ips"`)
+		assert.Contains(t, r.Error, "blocked_ips_ip_key")
+	}
+}
+
+func TestHeldQueryRelease(t *testing.T) {
+	var buf bytes.Buffer
+	logger := slog.New(slog.NewJSONHandler(&buf, &slog.HandlerOptions{Level: slog.LevelDebug}))
+	ctx := context.Background()
+	held := func(debug bool) *heldQuery {
+		_, h := holdFailedQuery(ctx, &blockedIP{})
+		require.True(t, h.hold(&queryLogger{debug: debug, logger: logger}, ctx, "INSERT", time.Millisecond, errors.New("duplicate")))
+		require.False(t, h.hold(&queryLogger{logger: logger}, ctx, "SELECT", 0, errors.New("other")), "one query is held")
+		return h
+	}
+
+	// a handled error is logged only with Debug, at the debug level
+	held(false).release(true)
+	assert.Empty(t, buf.String())
+	h := held(true)
+	h.release(true)
+	assert.Contains(t, buf.String(), `"level":"DEBUG","msg":"orgo: query failed, handled by the model","sql":"INSERT"`)
+	buf.Reset()
+
+	// the release of the deferred call does nothing then
+	h.release(false)
+	assert.Empty(t, buf.String())
+
+	held(false).release(false)
+	assert.Contains(t, buf.String(), `"level":"ERROR","msg":"orgo: query failed","sql":"INSERT"`)
+
+	// the models without a DBErrorHandler hold nothing
+	hctx, h := holdFailedQuery(ctx, &plainBlockedIP{})
+	assert.Nil(t, h)
+	assert.Equal(t, ctx, hctx)
+	h.release(false)
+}
