@@ -2,9 +2,9 @@ package cron
 
 import (
 	"testing"
-	"testing/synctest"
 	"time"
 
+	"github.com/ordaen/orgo/pg/pgtest"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -31,7 +31,7 @@ func TestJobsRegister(t *testing.T) {
 }
 
 func TestJobsRegisterActive(t *testing.T) {
-	synctest.Test(t, func(t *testing.T) {
+	pgtest.Synctest(t, func(t *testing.T) {
 		clearTables(t)
 		job, runs := signalJob("active", nil)
 		job.Active = true
@@ -45,7 +45,7 @@ func TestJobsRegisterActive(t *testing.T) {
 // TestJobsRegisterExisting checks the stored record wins over the job: an active record is activated,
 // and a record left running by a stopped process is not running anymore.
 func TestJobsRegisterExisting(t *testing.T) {
-	synctest.Test(t, func(t *testing.T) {
+	pgtest.Synctest(t, func(t *testing.T) {
 		clearTables(t)
 		_, err := Records.Create(&CronRecord{Handler: "existing", Name: "existing", Spec: everySecond, Active: true, Running: true, LogID: 9})
 		require.NoError(t, err)
@@ -60,7 +60,7 @@ func TestJobsRegisterExisting(t *testing.T) {
 }
 
 func TestJobsStop(t *testing.T) {
-	synctest.Test(t, func(t *testing.T) {
+	pgtest.Synctest(t, func(t *testing.T) {
 		clearTables(t)
 		job, runs := signalJob("stopped", nil)
 		job.Active = true

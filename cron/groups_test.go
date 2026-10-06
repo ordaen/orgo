@@ -3,10 +3,10 @@ package cron
 import (
 	"context"
 	"testing"
-	"testing/synctest"
 	"time"
 
 	"github.com/ordaen/orgo/pg"
+	"github.com/ordaen/orgo/pg/pgtest"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -55,7 +55,7 @@ func TestRegisterGroup(t *testing.T) {
 
 // TestRegisterGroupAgain checks a registered job gets its new definition and keeps its stored state.
 func TestRegisterGroupAgain(t *testing.T) {
-	synctest.Test(t, func(t *testing.T) {
+	pgtest.Synctest(t, func(t *testing.T) {
 		clearTables(t)
 		cleanupGroup(t, "system")
 		job, oldRuns := signalJob("job", nil)
@@ -104,7 +104,7 @@ func TestRegisterGroupsSeparate(t *testing.T) {
 
 // TestDisableGroup checks a disabled plugin keeps its records, and they are resumed when it is enabled again.
 func TestDisableGroup(t *testing.T) {
-	synctest.Test(t, func(t *testing.T) {
+	pgtest.Synctest(t, func(t *testing.T) {
 		clearTables(t)
 		cleanupGroup(t, "billing")
 		job, runs := signalJob("invoice", nil)

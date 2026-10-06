@@ -2,9 +2,9 @@ package cron
 
 import (
 	"testing"
-	"testing/synctest"
 	"time"
 
+	"github.com/ordaen/orgo/pg/pgtest"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -25,7 +25,7 @@ func TestCronRecordCanUpdateSpec(t *testing.T) {
 }
 
 func TestActivateDeactivate(t *testing.T) {
-	synctest.Test(t, func(t *testing.T) {
+	pgtest.Synctest(t, func(t *testing.T) {
 		clearTables(t)
 		job, runs := signalJob("schedule", nil)
 		rec := registerJob(t, job)
@@ -52,7 +52,7 @@ func TestActivateDeactivate(t *testing.T) {
 // TestDeactivateDuringRun checks Deactivate does not wait for the running job, waiting would deadlock
 // the bubble, and the finished run does not set the next run of the inactive job.
 func TestDeactivateDuringRun(t *testing.T) {
-	synctest.Test(t, func(t *testing.T) {
+	pgtest.Synctest(t, func(t *testing.T) {
 		clearTables(t)
 		release := make(chan struct{})
 		job, runs := signalJob("busy", release)
@@ -88,7 +88,7 @@ func TestActivateInvalidSpec(t *testing.T) {
 }
 
 func TestUpdateSpec(t *testing.T) {
-	synctest.Test(t, func(t *testing.T) {
+	pgtest.Synctest(t, func(t *testing.T) {
 		clearTables(t)
 		job, runs := signalJob("respec", nil)
 		job.Spec = "0 0 1 1 *"
