@@ -15,6 +15,7 @@ var (
 	_ pg.AfterDeleteHook = (*CronLog)(nil)
 )
 
+// Logs is the repository of the job runs, in cron_logs.
 var Logs = repo.Register(&cronLogs{})
 
 type cronLogs struct {
@@ -37,7 +38,7 @@ func removeOldRecords(handler string) error {
 	return err
 }
 
-// NewLog return new CronLog
+// NewLog returns a new running log of the job with the name and the handler, it is not stored yet, see Create.
 func NewLog(name, handler string) *CronLog {
 	l := &CronLog{Handler: handler}
 	l.Name = name
@@ -45,7 +46,8 @@ func NewLog(name, handler string) *CronLog {
 	return l
 }
 
-// CronLog model
+// CronLog is a run of a job with its status and message, its messages are CronLogMessage records.
+// A protected log is not removed with the old logs, see CronSettings.
 type CronLog struct {
 	model.Base[model.ID]
 
@@ -57,9 +59,10 @@ type CronLog struct {
 	Failures  int    `json:"failures,omitempty"`
 }
 
+// TableName returns "cron_logs".
 func (m *CronLog) TableName() string { return "cron_logs" }
 
-// SetRunning meth
+// SetRunning sets the status of the log running, it does not store it.
 func (m *CronLog) SetRunning() {
 	m.Status = "running"
 }
@@ -141,12 +144,14 @@ func (m *CronLog) Create() error {
 	return nil
 }
 
+// Protect stores the log protected, it is not removed with the old logs.
 func (m *CronLog) Protect() error {
 	m.Protected = true
 	_, err := Logs.Update(m, "protected")
 	return err
 }
 
+// Unprotect stores the log not protected, it can be removed with the old logs.
 func (m *CronLog) Unprotect() error {
 	m.Protected = false
 	_, err := Logs.Update(m, "protected")
@@ -159,30 +164,36 @@ func (m *CronLog) AfterDelete(ctx context.Context, tx pg.Tx) error {
 	return err
 }
 
+// CronLogger is embedded in the types logging to the log of a job run. Its methods do nothing without a log.
 type CronLogger struct {
 	log *CronLog
 }
 
+// SetLog sets the log of the run.
 func (l *CronLogger) SetLog(log *CronLog) {
 	l.log = log
 }
 
+// Log returns the log of the run, or nil.
 func (l *CronLogger) Log() *CronLog {
 	return l.log
 }
 
+// LogInfo adds a message to the log, see CronLog.AddMessage.
 func (l *CronLogger) LogInfo(message string, args ...any) {
 	if l.log != nil {
 		l.log.AddMessage(message, args...)
 	}
 }
 
+// LogError adds the error to the log, see CronLog.AddError.
 func (l *CronLogger) LogError(err error) {
 	if l.log != nil {
 		l.log.AddError(err)
 	}
 }
 
+// LogErrorString adds an error message to the log, see CronLog.AddErrorString.
 func (l *CronLogger) LogErrorString(message string, args ...any) {
 	if l.log != nil {
 		l.log.AddErrorString(message, args...)

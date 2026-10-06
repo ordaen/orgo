@@ -18,6 +18,7 @@ var Settings = &CronSettings{
 	KeepLogRecords: 30,
 }
 
+// CronSettings are the settings of the cron jobs, see Settings.
 type CronSettings struct {
 	// KeepLogRecords is the number of the not protected logs kept for a job, <= 0 keeps all
 	KeepLogRecords int `json:"keep_log_records"`

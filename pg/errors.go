@@ -41,6 +41,7 @@ type RegistrationError struct {
 	pcs []uintptr
 }
 
+// Error returns the message of the error with the registration stack.
 func (e *RegistrationError) Error() string {
 	var b strings.Builder
 	fmt.Fprintf(&b, "[PG] %s failed: %v\nregistered at:", e.What, e.Err)
@@ -50,6 +51,7 @@ func (e *RegistrationError) Error() string {
 	return b.String()
 }
 
+// Unwrap returns Err.
 func (e *RegistrationError) Unwrap() error {
 	return e.Err
 }

@@ -1,3 +1,4 @@
+// Package files stores files in the files table, like the avatars, resized on create, and the attachments.
 package files
 
 import (
@@ -20,13 +21,14 @@ const avatarSize = 176
 
 var _ pg.BeforeCreateHook = (*File)(nil)
 
+// Files is the repository of the files, in the files table.
 var Files = repo.Register(&filesStore{})
 
 type filesStore struct {
 	repo.Base[*File]
 }
 
-// File model
+// File is a stored file, found by its Token. A file of the type "avatar" is resized on create, see BeforeCreate.
 type File struct {
 	model.Base[model.ID]
 
@@ -38,10 +40,12 @@ type File struct {
 	Data  []byte `json:"data,omitempty"`
 }
 
+// TableName returns "files".
 func (m *File) TableName() string {
 	return "files"
 }
 
+// BeforeCreate sets a new token. An avatar, a JPEG or PNG image, is scaled down to fit in an avatarSize square.
 func (m *File) BeforeCreate(ctx context.Context, tx pg.Tx) error {
 	m.Token = uuid.NewV4().String()
 	if m.Type != "avatar" {

@@ -16,12 +16,15 @@ import (
 // ErrRunning is returned when a job is run while it is running, by this or another process.
 var ErrRunning = errors.New("cron job is already running")
 
+// JobOptions restrict the changes of a job by its record.
 type JobOptions struct {
-	NoSpecChange      bool
+	// NoSpecChange rejects the spec changes by CronRecord.UpdateSpec.
+	NoSpecChange bool
+	// NoManualExecution rejects the runs by CronRecord.Run and CronRecord.Execute.
 	NoManualExecution bool
 }
 
-// Job type
+// Job is a function run at the times of its cron Spec while it is active. ID is the handler of its record.
 type Job struct {
 	ID   string
 	Name string
@@ -64,7 +67,7 @@ func (j *Job) expression() *cronexpr.Expression {
 	return exp
 }
 
-// NextDuration returns duration to the closes next point starting from 't'
+// NextDuration returns the duration from t to the next run, see Next.
 func (j *Job) NextDuration(t time.Time) time.Duration {
 	return j.Next(t).Sub(t)
 }

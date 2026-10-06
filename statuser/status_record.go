@@ -11,6 +11,7 @@ import (
 	"github.com/ordaen/orgo/types"
 )
 
+// StatusRecords is the repository of the status changes, in status_records.
 var StatusRecords = repo.Register(&statusRecords{})
 
 type statusRecords struct {
@@ -60,12 +61,15 @@ type StatusRecord struct {
 	Issuer    *types.User `json:"issuer,omitempty"`
 }
 
+// TableName returns "status_records".
 func (m *StatusRecord) TableName() string { return "status_records" }
 
+// Short returns the record without its owner.
 func (m *StatusRecord) Short() ShortStatusRecord {
 	return ShortStatusRecord{Status: m.Status, Reason: m.Reason, Time: m.Created, User: m.Issuer}
 }
 
+// ShortStatusRecord is a StatusRecord without its owner, for the clients.
 type ShortStatusRecord struct {
 	Status string      `json:"status"`
 	Reason string      `json:"reason"`

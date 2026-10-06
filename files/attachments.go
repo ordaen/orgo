@@ -4,6 +4,8 @@ import (
 	"encoding/base64"
 )
 
+// Attachment is an uploaded file, with its Content encoded by Enc, "base64" or none. Save stores it as a File
+// and replaces its content with the token of the file.
 type Attachment struct {
 	File    string `json:"file"`
 	Name    string `json:"name"`
@@ -12,7 +14,7 @@ type Attachment struct {
 	Content string `json:"content,omitempty"`
 }
 
-// Save storing attachment content in file
+// Save stores the decoded content as an attachment File, then sets File to its token and clears Content.
 func (m *Attachment) Save() error {
 	file := &File{
 		Name: m.Name,

@@ -9,7 +9,7 @@ import (
 	"github.com/ordaen/orgo/logs"
 )
 
-// Jobs type
+// Jobs are the registered jobs, scheduled by their records.
 type Jobs struct {
 	sync.RWMutex
 	jobs map[string]*Job
@@ -110,13 +110,14 @@ func (c *Jobs) Stop() {
 	}
 }
 
+// Job returns the registered job with the id, or nil.
 func (c *Jobs) Job(id string) *Job {
 	c.RLock()
 	defer c.RUnlock()
 	return c.jobs[id]
 }
 
-// Next returning next time for specified spec
+// Next returns the next time of the spec after now, or the error of an invalid spec.
 func (c *Jobs) Next(spec string) (time.Time, error) {
 	exp, err := parseSpec(spec)
 	if err != nil {

@@ -26,7 +26,7 @@ func (t passwordParts) salt() string {
 	return ""
 }
 
-// Password type
+// Password is a hashed password, "{method}hash". A hash without a method is a legacy "ssha1" hash.
 type Password string
 
 var passwordRe = regexp.MustCompile(`^\{(.+)\}(.+)$`)
@@ -39,7 +39,7 @@ func (t Password) parts() passwordParts {
 	return passwordParts{Meth: "ssha1", Pass: string(t)}
 }
 
-// Valid verifying password
+// Valid reports whether s is the hashed password.
 func (t Password) Valid(s string) bool {
 	ps := t.parts()
 	switch ps.Meth {

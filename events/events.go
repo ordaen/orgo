@@ -34,12 +34,19 @@ var (
 
 // PubSub publishes events and subscribes to them, it is implemented by Hub.
 type PubSub interface {
+	// Pub publishes the model as an event named by its table.
 	Pub(m Model)
+	// PubDoc publishes the model as the named event.
 	PubDoc(name string, m Model)
+	// PubEvent publishes the named event without data.
 	PubEvent(name string)
+	// PubData publishes the named event with the data.
 	PubData(name string, data any)
+	// PubID publishes the ID as an event named by the table.
 	PubID(tableName string, id model.ModelID)
+	// Sub calls handler with the named events, or all events when name is All, until unsubscribe is called.
 	Sub(name string, handler EventFunc, opts ...SubOption) (unsubscribe func())
+	// SubFunc calls handler with the events of the names, until unsubscribe is called.
 	SubFunc(handler EventFunc, names ...string) (unsubscribe func())
 }
 

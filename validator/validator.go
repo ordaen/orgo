@@ -17,7 +17,9 @@ import (
 	"unicode/utf8"
 )
 
+// ValidType is a value that validates itself, checked by Validator.Valid.
 type ValidType interface {
+	// Valid reports whether the value is valid.
 	Valid() bool
 }
 
@@ -26,6 +28,7 @@ type Error struct {
 	Errors []string
 }
 
+// Error returns the validation errors separated by commas.
 func (e *Error) Error() string {
 	return strings.Join(e.Errors, ", ")
 }
@@ -61,7 +64,7 @@ func (v Validator) Verify() error {
 	return nil
 }
 
-// Valid validates interface
+// Valid adds an "invalid" error of the pointer when the value is not valid. It reports whether it is valid.
 //
 //	v.Valid(ValidType, "name")
 func (v *Validator) Valid(value ValidType, pointer string) bool {

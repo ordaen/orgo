@@ -16,6 +16,7 @@ import (
 	"github.com/ordaen/orgo/types"
 )
 
+// BlockedIPs is the cached repository of the blocked addresses and networks, matched by its IsBlocked method.
 var BlockedIPs = repo.RegisterCached(&blockedIPsStore{})
 
 // blockedIPsStore caches the blocks in memory. IsBlocked matches the parsed networks of a snapshot, rebuilt after
@@ -170,6 +171,7 @@ type BlockedIP struct {
 	types.UserFields
 }
 
+// TableName returns "blocked_ips".
 func (m *BlockedIP) TableName() string {
 	return "blocked_ips"
 }
@@ -187,10 +189,12 @@ func (m *BlockedIP) Expired(now time.Time) bool {
 	return m.Period > 0 && m.SecondsLeft(now) == 0
 }
 
+// BeforeCreate validates the address or network and stores it in canonical form.
 func (m *BlockedIP) BeforeCreate(ctx context.Context, tx pg.Tx) error {
 	return m.setIP()
 }
 
+// BeforeUpdate validates the address or network and stores it in canonical form.
 func (m *BlockedIP) BeforeUpdate(ctx context.Context, tx pg.Tx) error {
 	return m.setIP()
 }
@@ -237,6 +241,7 @@ func parsePrefix(ip string) (netip.Prefix, error) {
 	return netip.PrefixFrom(a.WithZone(""), a.BitLen()), nil
 }
 
+// HandleDBError returns an error naming the address when it is already blocked.
 func (b *BlockedIP) HandleDBError(op string, err *pg.PgError) error {
 	if err.ConstraintName == "blocked_ips_ip_key" {
 		return fmt.Errorf("ip: %s already exists", b.IP)

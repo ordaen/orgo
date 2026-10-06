@@ -32,11 +32,18 @@ type (
 
 // Connection is the query interface shared by GlobalConnection and Tx.
 type Connection interface {
+	// Exec runs the statement with the args and returns its command tag.
 	Exec(ctx context.Context, sql string, args ...any) (pgconn.CommandTag, error)
+	// Query runs the query with the args and returns its rows, which must be closed.
 	Query(ctx context.Context, sql string, args ...any) (Rows, error)
+	// QueryRow runs the query with the args and returns its first row, its error is returned by Scan.
 	QueryRow(ctx context.Context, sql string, args ...any) Row
+	// SendBatch sends the queued queries of the batch at once, the results must be closed.
 	SendBatch(ctx context.Context, b *Batch) BatchResults
+	// CopyFrom inserts the rows of rowSrc into the columns of the table with the COPY protocol, it returns
+	// the number of inserted rows.
 	CopyFrom(ctx context.Context, tableName Identifier, columnNames []string, rowSrc CopyFromSource) (int64, error)
+	// Begin starts a transaction, a nested one with a savepoint in a Tx.
 	Begin(ctx context.Context) (Tx, error)
 }
 

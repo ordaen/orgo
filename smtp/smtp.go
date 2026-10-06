@@ -57,14 +57,16 @@ type Settings struct {
 	Timeout int `json:"timeout,string,omitempty"`
 }
 
+// ContentType is the MIME type of the body of an email.
 type ContentType string
 
+// The content types of the email bodies.
 const (
 	HTML ContentType = "text/html"
 	TEXT ContentType = "text/plain"
 )
 
-// Agent mailing agent
+// Agent is an email to send with its recipients, body and attachments.
 type Agent struct {
 	From        mail.Address
 	To          []mail.Address

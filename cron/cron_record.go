@@ -11,6 +11,7 @@ import (
 	"github.com/ordaen/orgo/repo"
 )
 
+// Records is the repository of the job records, in cron_records.
 var Records = repo.Register(&cronRecords{})
 
 type cronRecords struct {
@@ -22,7 +23,8 @@ func (r *cronRecords) FindByHandler(h string) *CronRecord {
 	return r.FindWhere("handler = ?", h)
 }
 
-// CronRecord model
+// CronRecord is the stored state of a job, by its Handler: its spec, whether it is active and running,
+// and its last and next runs.
 type CronRecord struct {
 	model.Base[model.ID]
 
@@ -38,8 +40,10 @@ type CronRecord struct {
 	Running   bool      `json:"running,readonly"`
 }
 
+// TableName returns "cron_records".
 func (m *CronRecord) TableName() string { return "cron_records" }
 
+// Options returns the options of the job of the record, empty options when the job is not registered.
 func (m *CronRecord) Options() *JobOptions {
 	job := m.job()
 	if job != nil {

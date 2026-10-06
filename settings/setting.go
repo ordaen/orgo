@@ -37,4 +37,5 @@ type Setting struct {
 	Data json.RawMessage
 }
 
+// TableName returns "settings".
 func (m *Setting) TableName() string { return "settings" }

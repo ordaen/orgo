@@ -1,12 +1,12 @@
 package types
 
-// Variable type
+// Variable is a named value.
 type Variable struct {
 	Name  string `json:"name"`
 	Value string `json:"value"`
 }
 
-// Variables type
+// Variables is a list of variables.
 type Variables []Variable
 
 // IndexOf returns the index of the variable with the name, or -1 when it is not present

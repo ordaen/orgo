@@ -1,5 +1,6 @@
 package logger
 
+// SQLSchema creates the logs table
 const SQLSchema = `CREATE TABLE IF NOT EXISTS logs (
 			"id" Bigserial,
 			"level" Text NOT NULL,

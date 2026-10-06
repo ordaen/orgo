@@ -1,9 +1,13 @@
 package gql
 
+// The page and limit of NewPagination.
 const (
-	DefaultPage  = 1
+	// DefaultPage is the page when it is not given.
+	DefaultPage = 1
+	// DefaultLimit is the limit when it is not given.
 	DefaultLimit = 10
-	MaxLimit     = 100
+	// MaxLimit is the largest limit.
+	MaxLimit = 100
 )
 
 // Pagination is a struct that contains the pagination information

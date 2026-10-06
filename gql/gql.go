@@ -17,14 +17,16 @@ import (
 )
 
 type (
+	// GinContextKey is the type of GinCtxKey.
 	GinContextKey string
-	Changes       = changes.Changes
-	Change        = changes.Change
+	// Changes is changes.Changes.
+	Changes = changes.Changes
+	// Change is changes.Change.
+	Change = changes.Change
 )
 
-const (
-	GinCtxKey GinContextKey = "GinContextKey"
-)
+// GinCtxKey is the context key of the gin context of the request, stored by the GraphQL handler.
+const GinCtxKey GinContextKey = "GinContextKey"
 
 // GinContext returns the gin context stored in ctx with GinCtxKey
 func GinContext(ctx context.Context) (*gin.Context, error) {

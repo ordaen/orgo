@@ -7,20 +7,25 @@
 // several instances register the same jobs, a starting instance can release the run of another one.
 package cron
 
-// Global global application cron manager
+// Global is the jobs of the application.
 var Global = New()
 
-// Func type for cron function
+// Func is the function of a job, called with the log of its run.
 type Func func(*CronLog)
 
+// Logger logs the messages of a job run, it is implemented by CronLog.
 type Logger interface {
+	// UpdateMessage sets the message of the run, formatted with the args when they are given.
 	UpdateMessage(string, ...any)
+	// AddMessage adds a message to the run, formatted with the args when they are given.
 	AddMessage(string, ...any)
+	// AddErrorString adds an error message to the run, formatted with the args when they are given.
 	AddErrorString(string, ...any)
+	// AddError adds the error to the run.
 	AddError(error)
 }
 
-// New returns new Jobs
+// New returns new Jobs without jobs.
 func New() *Jobs {
 	return &Jobs{jobs: make(map[string]*Job)}
 }

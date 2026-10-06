@@ -12,10 +12,13 @@ import (
 )
 
 type (
-	Scope         = sentry.Scope
+	// Scope is sentry.Scope, the scope passed to the function of SentryWithScope.
+	Scope = sentry.Scope
+	// SentryOptions is sentry.ClientOptions, the options of InitSentry.
 	SentryOptions = sentry.ClientOptions
 )
 
+// The Sentry levels of the events.
 const (
 	SentryLevelDebug   = sentry.LevelDebug
 	SentryLevelInfo    = sentry.LevelInfo

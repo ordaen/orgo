@@ -1,5 +1,6 @@
 package files
 
+// SQLSchema creates the files table
 const SQLSchema = `CREATE TABLE IF NOT EXISTS files (
 		"id" Bigserial,
 		"token" UUid NOT NULL,

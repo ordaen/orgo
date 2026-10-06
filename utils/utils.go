@@ -1,3 +1,4 @@
+// Package utils has the small helpers of the orgo packages: random strings, string sanitizing and reflection.
 package utils
 
 import "reflect"

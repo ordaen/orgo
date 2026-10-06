@@ -223,7 +223,7 @@ type packetObj struct {
 	Data any    `json:"data,omitempty"`
 }
 
-// PacketJSON type
+// PacketJSON is a named packet with its data encoded as a JSON string.
 type PacketJSON struct {
 	Name string `json:"name"`
 	Data string `json:"data"`

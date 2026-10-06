@@ -1,3 +1,6 @@
+// Package sessions stores the sessions of the users in the sessions table and the blocked IP addresses and
+// networks in the blocked_ips table. Both are cached in memory, so the lookups of the requests do not query
+// the database.
 package sessions
 
 import (
@@ -17,6 +20,7 @@ const (
 	renewHours = 2
 )
 
+// Sessions is the cached repository of the sessions.
 var Sessions = repo.RegisterCached(&sessionsStore{})
 
 type sessionsStore struct {
@@ -120,7 +124,8 @@ func (c *sessionsStore) create(user *types.User, kind, sso string, expires time.
 	return c.Create(sess)
 }
 
-// Session base model
+// Session is a session of a user, of a Type like "login", found by its Token until it Expires. A session
+// authenticated with single sign-on has its SSO token.
 type Session struct {
 	model.Base[model.UUID]
 	Token   string
@@ -132,6 +137,7 @@ type Session struct {
 	types.UserFields
 }
 
+// TableName returns "sessions".
 func (m *Session) TableName() string {
 	return "sessions"
 }
