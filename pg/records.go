@@ -236,7 +236,7 @@ func CountWithContext(ctx context.Context, table string) (int, error) {
 
 // CountWhereWithContext is like CountWhere, but runs the query with ctx.
 func CountWhereWithContext(ctx context.Context, table string, where string, args ...any) (int, error) {
-	where, err := BindWhere(where, len(args))
+	where, args, err := BindWhere(where, args...)
 	if err != nil {
 		return 0, err
 	}

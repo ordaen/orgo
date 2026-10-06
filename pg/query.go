@@ -50,9 +50,9 @@ func (q *ModelQuery[T]) Where(where string, args ...any) *ModelQuery[T] {
 	if where == "" || c.err != nil {
 		return c
 	}
-	sql, n := bindPlaceholders(where, len(c.args))
-	if n != len(args) {
-		c.err = Errorf("where %q: %d placeholders, %d args", where, n, len(args))
+	sql, args, err := bindPlaceholders(where, len(c.args), args)
+	if err != nil {
+		c.err = err
 		return c
 	}
 	c.wheres = append(c.wheres, "("+sql+")")
@@ -212,25 +212,42 @@ func (q *ModelQuery[T]) clone() *ModelQuery[T] {
 	return &c
 }
 
-// BindWhere returns the where condition with its ? placeholders replaced by the $1, $2... placeholders of PostgreSQL.
-// It returns an error when the number of placeholders differs from nargs. A doubled ?? is a literal ?, like the
-// jsonb operators: "tags ?? ?" is "tags ? $1". Placeholders in strings, quoted identifiers, dollar quoted strings
-// and comments are not replaced.
-func BindWhere(where string, nargs int) (string, error) {
-	sql, n := bindPlaceholders(where, 0)
-	if n != nargs {
-		return "", Errorf("where %q: %d placeholders, %d args", where, n, nargs)
+// In is the list of values of an IN or NOT IN condition, bound as one array parameter:
+//
+//	Query(&User{}).Where("id IN ?", pg.In(ids))
+//
+// "x IN ?" is bound as "x = ANY($1)" and "x NOT IN ?" as "x <> ALL($1)", so the query is the same for any
+// number of values, an empty list matches no record with IN and every record with NOT IN. A nil list is empty.
+func In[S ~[]E, E any](values S) InList {
+	if values == nil {
+		values = S{}
 	}
-	return sql, nil
+	return InList{values: values}
 }
 
-// bindPlaceholders replaces the ? placeholders of the SQL with $offset+1, $offset+2... and returns the number of
-// placeholders. A doubled ?? is a literal ?. Strings, quoted identifiers, dollar quoted strings and comments
-// are copied unchanged.
-func bindPlaceholders(sql string, offset int) (string, int) {
+// InList is the list of values of an IN condition, see In.
+type InList struct {
+	values any
+}
+
+// BindWhere returns the where condition with its ? placeholders replaced by the $1, $2... placeholders of PostgreSQL,
+// and the args to run it with. It returns an error when the number of placeholders differs from the number of args.
+// A doubled ?? is a literal ?, like the jsonb operators: "tags ?? ?" is "tags ? $1". Placeholders in strings,
+// quoted identifiers, dollar quoted strings and comments are not replaced. The In args are bound with their
+// IN or NOT IN, see In.
+func BindWhere(where string, args ...any) (string, []any, error) {
+	return bindPlaceholders(where, 0, args)
+}
+
+// bindPlaceholders replaces the ? placeholders of the SQL with $offset+1, $offset+2... and returns the args to
+// run it with, the In args replaced by their values. It fails when the number of placeholders differs from the
+// number of args, or an In arg does not follow IN or NOT IN. A doubled ?? is a literal ?. Strings, quoted
+// identifiers, dollar quoted strings and comments are copied unchanged. args is not modified.
+func bindPlaceholders(sql string, offset int, args []any) (string, []any, error) {
 	var b strings.Builder
 	b.Grow(len(sql) + 8)
 	n := 0
+	cloned := false
 	for i := 0; i < len(sql); {
 		c := sql[i]
 		end := i + 1
@@ -241,8 +258,23 @@ func bindPlaceholders(sql string, offset int) (string, int) {
 			continue
 		case c == '?':
 			n++
-			b.WriteByte('$')
-			b.WriteString(strconv.Itoa(offset + n))
+			placeholder := "$" + strconv.Itoa(offset+n)
+			if n <= len(args) {
+				if list, ok := args[n-1].(InList); ok {
+					prefix, op, ok := cutInKeyword(b.String())
+					if !ok {
+						return "", nil, Errorf("where %q: pg.In arg %d does not follow IN or NOT IN", sql, n)
+					}
+					if !cloned {
+						args, cloned = slices.Clone(args), true
+					}
+					args[n-1] = list.values
+					b.Reset()
+					b.WriteString(prefix)
+					placeholder = op + "(" + placeholder + ")"
+				}
+			}
+			b.WriteString(placeholder)
 			i++
 			continue
 		case strings.HasPrefix(sql[i:], "--"):
@@ -270,7 +302,33 @@ func bindPlaceholders(sql string, offset int) (string, int) {
 		b.WriteString(sql[i:end])
 		i = end
 	}
-	return b.String(), n
+	if n != len(args) {
+		return "", nil, Errorf("where %q: %d placeholders, %d args", sql, n, len(args))
+	}
+	return b.String(), args, nil
+}
+
+// cutInKeyword returns the SQL before its trailing IN or NOT IN keyword, and the operator replacing it
+// with an array: "= ANY" or "<> ALL".
+func cutInKeyword(sql string) (prefix, op string, ok bool) {
+	s, ok := cutKeywordSuffix(sql, "IN")
+	if !ok {
+		return "", "", false
+	}
+	if s, ok := cutKeywordSuffix(s, "NOT"); ok {
+		return s, "<> ALL", true
+	}
+	return s, "= ANY", true
+}
+
+// cutKeywordSuffix returns the SQL before the keyword ending it, ignoring the trailing spaces and the case.
+func cutKeywordSuffix(sql, keyword string) (string, bool) {
+	s := strings.TrimRight(sql, " \t\r\n")
+	i := len(s) - len(keyword)
+	if i < 0 || !strings.EqualFold(s[i:], keyword) || i > 0 && isIdentChar(s[i-1]) {
+		return "", false
+	}
+	return s[:i], true
 }
 
 func isDigit(c byte) bool {

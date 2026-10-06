@@ -2,6 +2,7 @@ package pg
 
 import (
 	"context"
+	"slices"
 	"sync"
 	"testing"
 
@@ -32,19 +33,55 @@ func TestBindPlaceholders(t *testing.T) {
 		{sql: "x = ? AND y = 'abc ?", offset: 1, want: "x = $2 AND y = 'abc ?", n: 1},
 	}
 	for _, tt := range tests {
-		got, n := bindPlaceholders(tt.sql, tt.offset)
+		got, _, err := bindPlaceholders(tt.sql, tt.offset, make([]any, tt.n))
+		require.NoError(t, err, tt.sql)
 		assert.Equal(t, tt.want, got, tt.sql)
-		assert.Equal(t, tt.n, n, tt.sql)
 	}
 }
 
 func TestBindWhere(t *testing.T) {
-	sql, err := BindWhere("a = ? AND b = ?", 2)
+	sql, args, err := BindWhere("a = ? AND b = ?", 1, "x")
 	require.NoError(t, err)
 	assert.Equal(t, "a = $1 AND b = $2", sql)
+	assert.Equal(t, []any{1, "x"}, args)
 
-	_, err = BindWhere("a = $1", 1)
+	_, _, err = BindWhere("a = $1", 1)
 	assert.ErrorContains(t, err, "0 placeholders, 1 args")
+	_, _, err = BindWhere("a = ? AND b = ?", 1)
+	assert.ErrorContains(t, err, "2 placeholders, 1 args")
+}
+
+func TestBindWhereIn(t *testing.T) {
+	ids := []int64{1, 2}
+	tests := []struct {
+		sql, want string
+		args      []any
+	}{
+		{sql: "id IN ?", want: "id = ANY($1)", args: []any{In(ids)}},
+		{sql: "id NOT IN ?", want: "id <> ALL($1)", args: []any{In(ids)}},
+		{sql: "a = ? AND id not in   ? AND b = ?", want: "a = $1 AND id <> ALL($2) AND b = $3", args: []any{1, In(ids), 2}},
+		{sql: "id in\n?", want: "id = ANY($1)", args: []any{In(ids)}},
+		{sql: `"NOT" IN ?`, want: `"NOT" = ANY($1)`, args: []any{In(ids)}},
+		{sql: "knot IN ?", want: "knot = ANY($1)", args: []any{In(ids)}},
+	}
+	for _, tt := range tests {
+		given := slices.Clone(tt.args)
+		got, args, err := BindWhere(tt.sql, tt.args...)
+		require.NoError(t, err, tt.sql)
+		assert.Equal(t, tt.want, got, tt.sql)
+		assert.Contains(t, args, any(ids), "the list is bound as its values")
+		assert.Equal(t, given, tt.args, "the args are not modified")
+	}
+
+	// a nil list is empty, not NULL, so NOT IN matches every record
+	_, args, err := BindWhere("id NOT IN ?", In([]int64(nil)))
+	require.NoError(t, err)
+	assert.Equal(t, []any{[]int64{}}, args)
+
+	for _, sql := range []string{"id = ?", "id IN (?)", "join ?", "?"} {
+		_, _, err := BindWhere(sql, In(ids))
+		assert.ErrorContains(t, err, "pg.In arg 1 does not follow IN or NOT IN", sql)
+	}
 }
 
 func TestQueryBuild(t *testing.T) {

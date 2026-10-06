@@ -326,3 +326,29 @@ func TestNew(t *testing.T) {
 	var repository Repository[*baseModel] = r
 	assert.Equal(t, &baseModel{}, repository.New())
 }
+
+// TestBaseWhereIn checks the pg.In list of an IN or NOT IN condition, in the queries and the find methods.
+func TestBaseWhereIn(t *testing.T) {
+	seed := seedRecords(t, "john", "jane", "jack")
+	repo := New(&baseModel{})
+	ids := []model.ID{seed[0].ID, seed[2].ID}
+
+	res, err := repo.Query().Where("id IN ?", pg.In(ids)).Order("id").Select()
+	require.NoError(t, err)
+	assert.Equal(t, []*baseModel{seed[0], seed[2]}, res)
+	res, err = repo.Query().Where("id NOT IN ?", pg.In(ids)).Select()
+	require.NoError(t, err)
+	assert.Equal(t, []*baseModel{seed[1]}, res)
+
+	assert.Equal(t, []*baseModel{seed[0], seed[2]}, repo.FindMany("id IN ? ORDER BY id", pg.In(ids)))
+	assert.Equal(t, []*baseModel{seed[1], seed[2]}, repo.FindMany("name IN ? ORDER BY id", pg.In([]string{"jane", "jack"})))
+	assert.Equal(t, seed[1], repo.FindWhere("name = ? AND id NOT IN ?", "jane", pg.In(ids)))
+	assert.Equal(t, 2, repo.CountWhere("id IN ?", pg.In(ids)))
+
+	// an empty list matches no record with IN and every record with NOT IN
+	assert.Empty(t, repo.FindMany("id IN ?", pg.In([]model.ID{})))
+	assert.Len(t, repo.FindMany("id NOT IN ?", pg.In([]model.ID(nil))), 3)
+	n, err := repo.Query().Where("id NOT IN ?", pg.In([]model.ID{})).Count()
+	require.NoError(t, err)
+	assert.Equal(t, 3, n)
+}

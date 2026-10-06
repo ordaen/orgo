@@ -56,8 +56,9 @@ func (r *users) FindByEmail(email string) *User {
 }
 ```
 
-Where conditions are raw SQL with `?` placeholders. `repo.WithContext` returns a copy of a repository that runs
-its queries with a context.
+Where conditions are raw SQL with `?` placeholders. A list for `IN` or `NOT IN` is passed with `pg.In`:
+`Users.FindMany("id IN ?", pg.In(ids))`. `repo.WithContext` returns a copy of a repository that runs its queries
+with a context.
 
 ### Events: `events`
 

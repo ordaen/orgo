@@ -274,8 +274,8 @@ func (r *Base[T]) findOne(where string, args ...any) (T, error) {
 func (r *Base[T]) find(limit int, where string, args ...any) ([]T, error) {
 	query := "SELECT * FROM " + r.quotedTable
 	if where != "" {
-		where, err := pg.BindWhere(where, len(args))
-		if err != nil {
+		var err error
+		if where, args, err = pg.BindWhere(where, args...); err != nil {
 			return nil, err
 		}
 		query += " WHERE " + where
