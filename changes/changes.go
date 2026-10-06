@@ -65,6 +65,17 @@ func (c Changes) Contains(keys ...string) bool {
 	})
 }
 
+// Keys returns the changed keys in their order, each once.
+func (c Changes) Keys() []string {
+	keys := make([]string, 0, len(c))
+	for _, ch := range c {
+		if !slices.Contains(keys, ch.Key) {
+			keys = append(keys, ch.Key)
+		}
+	}
+	return keys
+}
+
 // Get returns the old and new values of the key, or empty strings when the key is not changed.
 func (c Changes) Get(key string) (from, to string) {
 	for _, ch := range c {

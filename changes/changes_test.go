@@ -127,3 +127,9 @@ func TestChangesContainsGet(t *testing.T) {
 	assert.Equal(t, "1", from)
 	assert.Equal(t, "2", to)
 }
+
+func TestKeys(t *testing.T) {
+	c := Changes{{Key: "b"}, {Key: "a"}, {Key: "b"}}
+	assert.Equal(t, []string{"b", "a"}, c.Keys())
+	assert.Empty(t, Changes(nil).Keys())
+}
