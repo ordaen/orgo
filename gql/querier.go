@@ -96,6 +96,51 @@ func (r *Querier[T]) FindExec(ctx context.Context, id model.ModelID, funcs ...fu
 	return rec, nil
 }
 
+// UpdateFunc changes the record and adds the changes, like UpdateIfExists, see FindUpdate
+type UpdateFunc[T model.Model] func(rec T, changes *Changes) error
+
+// FindUpdate finds the record with the id in the scopes and calls update with it. When update adds changes,
+// it updates their columns through the repository, so its hooks, cache and events see them, and logs the update
+// by the user of the request with the changes, see logger.UpdateRecord. The column of a change is its key,
+// or the part of its key before a dot, like "data" for "data.name" of a ValuesDiff. It returns the record
+// as stored, an error of update without writing, or ErrNotFound.
+//
+//	q.FindUpdate(ctx, id, func(rec *BlockedIP, ch *gql.Changes) error {
+//		gql.UpdateIfExists(ch, "reason", &rec.Reason, input.Reason)
+//		return nil
+//	})
+func (r *Querier[T]) FindUpdate(ctx context.Context, id model.ModelID, update UpdateFunc[T]) (T, error) {
+	var empty T
+	rec, err := r.Find(ctx, id)
+	if err != nil {
+		return empty, err
+	}
+	var ch Changes
+	if err := update(rec, &ch); err != nil {
+		return empty, err
+	}
+	if len(ch) == 0 {
+		return rec, nil
+	}
+	updated, err := logger.UpdateRecord(r.store.WithContext(ctx), rec, GetUser(ctx), ch, changedColumns(ch)...)
+	if err != nil {
+		return empty, err
+	}
+	return updated, nil
+}
+
+// changedColumns returns the columns of the changes, each once.
+func changedColumns(ch Changes) []string {
+	var cols []string
+	for _, key := range ch.Keys() {
+		col, _, _ := strings.Cut(key, ".")
+		if !slices.Contains(cols, col) {
+			cols = append(cols, col)
+		}
+	}
+	return cols
+}
+
 // FindMany returns the records in the scopes matching the queries. The limit is DefaultLimit when it is not
 // given, at most MaxLimit. sort is validated, see Sort.
 func (r *Querier[T]) FindMany(ctx context.Context, limit *int, offset *int, sort *string, queries ...Where) ([]T, error) {
