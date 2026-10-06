@@ -315,3 +315,14 @@ func TestBaseLogsErrors(t *testing.T) {
 	assert.Contains(t, out, `"msg":"orgo: query failed"`)
 	assert.NotContains(t, out, "find failed")
 }
+
+func TestNew(t *testing.T) {
+	r := New(&baseModel{})
+	a, b := r.New(), r.New()
+	require.NotNil(t, a)
+	assert.NotSame(t, a, b, "every call returns a new model")
+	assert.Equal(t, &baseModel{}, a)
+	assert.Equal(t, &baseModel{}, NewCached(&baseModel{}, nil).New())
+	var repository Repository[*baseModel] = r
+	assert.Equal(t, &baseModel{}, repository.New())
+}

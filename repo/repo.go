@@ -25,6 +25,7 @@ import (
 // return 0. The errors are logged with pg.DB.Logger(). Use Query to get the errors.
 type Repository[T model.Model] interface {
 	WithContext(ctx context.Context) Repository[T] // returns a copy of the repository using ctx
+	New() T                                        // returns a new model, a new struct when T is a pointer
 	FindByID(id any) T                             // returns the record with the given ID, or a new model
 	FindWhere(where string, args ...any) T         // returns the first record matching the where condition, or a new model
 	FindMany(where string, args ...any) []T        // returns the records matching the where condition, all records when it is empty
@@ -217,6 +218,11 @@ func (r *Base[T]) publish(hub *events.Hub) func(T, error) (T, error) {
 		}
 		return m, err
 	}
+}
+
+// New returns a new model of the repository, a new struct when T is a pointer, to be filled and created.
+func (r *Base[T]) New() T {
+	return newModel[T]()
 }
 
 // TableName returns the repository table.
