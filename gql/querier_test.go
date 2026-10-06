@@ -157,10 +157,10 @@ func TestSort(t *testing.T) {
 	assert.Equal(t, `"name" DESC, "id"`, order)
 	order, err = Sort[*item](nil)
 	require.NoError(t, err)
-	assert.Equal(t, "name DESC", order, "the SortBy of the model")
+	assert.Empty(t, order, "the querier applies the SortBy of the model")
 	order, err = Sort[*item](new("  "))
 	require.NoError(t, err)
-	assert.Equal(t, "name DESC", order)
+	assert.Empty(t, order)
 
 	for _, sort := range []string{
 		"missing", "name sideways", "name desc nulls", "name;DROP TABLE items", "(SELECT 1)", "name,", "1",

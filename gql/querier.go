@@ -13,7 +13,6 @@ import (
 	"github.com/ordaen/orgo/model"
 	"github.com/ordaen/orgo/pg"
 	"github.com/ordaen/orgo/repo"
-	"github.com/ordaen/orgo/utils"
 )
 
 // ErrNotFound is returned when the record is not found in the scopes of the querier.
@@ -94,6 +93,32 @@ func (r *Querier[T]) FindExec(ctx context.Context, id model.ModelID, funcs ...fu
 		}
 	}
 	return rec, nil
+}
+
+// CreateFunc sets the fields of the new record, like SetIfExists, see Create
+type CreateFunc[T model.Model] func(rec T) error
+
+// Create calls create with a new record and creates it through the repository with the request context, so its
+// hooks, cache and events see it, and logs the creation by the user of the request, see logger.CreateRecord.
+// It returns the record as stored, or an error of create without writing. The scopes of the querier are not
+// applied to the new record, create sets its fields, like an owner.
+//
+//	q.Create(ctx, func(rec *BlockedIP) error {
+//		gql.SetIfExists(&rec.IP, input.IP)
+//		gql.SetIfExists(&rec.Reason, input.Reason)
+//		return nil
+//	})
+func (r *Querier[T]) Create(ctx context.Context, create CreateFunc[T]) (T, error) {
+	var empty T
+	rec := r.store.New()
+	if err := create(rec); err != nil {
+		return empty, err
+	}
+	created, err := logger.CreateRecord(r.store.WithContext(ctx), rec, GetUser(ctx))
+	if err != nil {
+		return empty, err
+	}
+	return created, nil
 }
 
 // UpdateFunc changes the record and adds the changes, like UpdateIfExists, see FindUpdate
@@ -190,6 +215,11 @@ func (r *Querier[T]) buildQuery(ctx context.Context, sort *string, queries []Whe
 	if err != nil {
 		return nil, err
 	}
+	if order == "" {
+		if v, ok := any(r.store.New()).(modelWithSortBy); ok {
+			order = v.SortBy()
+		}
+	}
 	query := r.query(ctx).Order(order)
 	for _, v := range queries {
 		switch {
@@ -202,16 +232,14 @@ func (r *Querier[T]) buildQuery(ctx context.Context, sort *string, queries []Whe
 	return query, nil
 }
 
+// modelWithSortBy is a model with its default ORDER BY expression, used when the client gives no sort.
 type modelWithSortBy interface{ SortBy() string }
 
 // Sort returns the ORDER BY expression of sort given by a client: comma separated columns of T, each optionally
 // followed by asc or desc, like "name, created desc". It returns an error for the other values, they are not
-// SQL. Without sort it returns the SortBy of T when it has it, or "".
+// SQL. Without sort it returns "", the querier orders by the SortBy method of the model when it has it.
 func Sort[T model.Model](sort *string) (string, error) {
 	if sort == nil || strings.TrimSpace(*sort) == "" {
-		if v, ok := any(utils.TypeCreate[T]()).(modelWithSortBy); ok {
-			return v.SortBy(), nil
-		}
 		return "", nil
 	}
 	var parts []string
