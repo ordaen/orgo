@@ -43,8 +43,6 @@ type schedule struct {
 	mu     sync.Mutex
 	spec   string
 	cancel context.CancelFunc
-	// loops are the running loops, a stopped loop returns after its running run
-	loops sync.WaitGroup
 }
 
 // parseSpec parses the cron spec.
@@ -104,7 +102,7 @@ func (j *Job) ResetSpec(spec string) error {
 	}
 	ctx, cancel := context.WithCancel(context.Background())
 	j.sched.spec, j.sched.cancel = spec, cancel
-	j.sched.loops.Go(func() { j.loop(ctx, exp) })
+	go j.loop(ctx, exp)
 	return nil
 }
 

@@ -2,6 +2,7 @@ package cron
 
 import (
 	"testing"
+	"testing/synctest"
 	"time"
 
 	"github.com/stretchr/testify/assert"
@@ -24,47 +25,49 @@ func TestCronRecordCanUpdateSpec(t *testing.T) {
 }
 
 func TestActivateDeactivate(t *testing.T) {
-	clearTables(t)
-	job, runs := signalJob("schedule", nil)
-	rec := registerJob(t, job)
-	assertNotScheduled(t, Global.Job("schedule"))
+	synctest.Test(t, func(t *testing.T) {
+		clearTables(t)
+		job, runs := signalJob("schedule", nil)
+		rec := registerJob(t, job)
+		assertNotScheduled(t, Global.Job("schedule"))
 
-	require.NoError(t, rec.Activate())
-	assert.True(t, rec.Active)
-	stored := Records.FindByHandler("schedule")
-	assert.True(t, stored.Active)
-	assert.WithinDuration(t, time.Now(), stored.NextRun, 2*time.Second)
-	receiveRun(t, runs, 2*time.Second)
-	receiveRun(t, runs, 2*time.Second)
-	waitRecord(t, "schedule", func(r *CronRecord) bool { return !r.LastRun.IsZero() && !r.NextRun.IsZero() })
+		require.NoError(t, rec.Activate())
+		assert.True(t, rec.Active)
+		stored := Records.FindByHandler("schedule")
+		assert.True(t, stored.Active)
+		assert.WithinDuration(t, time.Now(), stored.NextRun, 2*time.Second)
+		receiveRun(t, runs, 2*time.Second)
+		receiveRun(t, runs, 2*time.Second)
+		waitRecord(t, "schedule", func(r *CronRecord) bool { return !r.LastRun.IsZero() && !r.NextRun.IsZero() })
 
-	require.NoError(t, rec.Deactivate())
-	assert.False(t, rec.Active)
-	waitStopped(t, Global.Job("schedule"), runs)
-	stored = Records.FindByHandler("schedule")
-	assert.False(t, stored.Active)
-	assert.True(t, stored.NextRun.IsZero())
+		require.NoError(t, rec.Deactivate())
+		assert.False(t, rec.Active)
+		waitStopped(t, Global.Job("schedule"), runs)
+		stored = Records.FindByHandler("schedule")
+		assert.False(t, stored.Active)
+		assert.True(t, stored.NextRun.IsZero())
+	})
 }
 
-// TestDeactivateDuringRun checks Deactivate does not wait for the running job, and the finished run
-// does not set the next run of the inactive job.
+// TestDeactivateDuringRun checks Deactivate does not wait for the running job, waiting would deadlock
+// the bubble, and the finished run does not set the next run of the inactive job.
 func TestDeactivateDuringRun(t *testing.T) {
-	clearTables(t)
-	release := make(chan struct{})
-	job, runs := signalJob("busy", release)
-	rec := registerJob(t, job)
-	require.NoError(t, rec.Activate())
-	receiveRun(t, runs, 2*time.Second)
+	synctest.Test(t, func(t *testing.T) {
+		clearTables(t)
+		release := make(chan struct{})
+		job, runs := signalJob("busy", release)
+		rec := registerJob(t, job)
+		require.NoError(t, rec.Activate())
+		receiveRun(t, runs, 2*time.Second)
 
-	start := time.Now()
-	require.NoError(t, rec.Deactivate())
-	assert.Less(t, time.Since(start), 500*time.Millisecond)
-	close(release)
+		require.NoError(t, rec.Deactivate())
+		close(release)
 
-	stored := waitRecord(t, "busy", func(r *CronRecord) bool { return !r.Running })
-	assert.False(t, stored.Active)
-	assert.True(t, stored.NextRun.IsZero())
-	waitStopped(t, Global.Job("busy"), runs)
+		stored := waitRecord(t, "busy", func(r *CronRecord) bool { return !r.Running })
+		assert.False(t, stored.Active)
+		assert.True(t, stored.NextRun.IsZero())
+		waitStopped(t, Global.Job("busy"), runs)
+	})
 }
 
 func TestActivateCanEnable(t *testing.T) {
@@ -85,17 +88,19 @@ func TestActivateInvalidSpec(t *testing.T) {
 }
 
 func TestUpdateSpec(t *testing.T) {
-	clearTables(t)
-	job, runs := signalJob("respec", nil)
-	job.Spec = "0 0 1 1 *"
-	rec := registerJob(t, job)
-	require.NoError(t, rec.Activate())
-	next := Global.Job("respec").Next(time.Now())
-	assert.Equal(t, []any{time.January, 1}, []any{next.Month(), next.Day()}, "the job is scheduled by its spec")
+	synctest.Test(t, func(t *testing.T) {
+		clearTables(t)
+		job, runs := signalJob("respec", nil)
+		job.Spec = "0 0 1 1 *"
+		rec := registerJob(t, job)
+		require.NoError(t, rec.Activate())
+		next := Global.Job("respec").Next(time.Now())
+		assert.Equal(t, []any{time.January, 1}, []any{next.Month(), next.Day()}, "the job is scheduled by its spec")
 
-	require.NoError(t, rec.UpdateSpec(everySecond))
-	assert.Equal(t, everySecond, Records.FindByHandler("respec").Spec)
-	receiveRun(t, runs, 2*time.Second)
+		require.NoError(t, rec.UpdateSpec(everySecond))
+		assert.Equal(t, everySecond, Records.FindByHandler("respec").Spec)
+		receiveRun(t, runs, 2*time.Second)
+	})
 }
 
 func TestUpdateSpecInactive(t *testing.T) {

@@ -2,6 +2,7 @@ package cron
 
 import (
 	"testing"
+	"testing/synctest"
 	"time"
 
 	"github.com/stretchr/testify/assert"
@@ -30,40 +31,46 @@ func TestJobsRegister(t *testing.T) {
 }
 
 func TestJobsRegisterActive(t *testing.T) {
-	clearTables(t)
-	job, runs := signalJob("active", nil)
-	job.Active = true
-	rec := registerJob(t, job)
-	assert.True(t, rec.Active)
-	assert.False(t, rec.NextRun.IsZero())
-	receiveRun(t, runs, 2*time.Second)
+	synctest.Test(t, func(t *testing.T) {
+		clearTables(t)
+		job, runs := signalJob("active", nil)
+		job.Active = true
+		rec := registerJob(t, job)
+		assert.True(t, rec.Active)
+		assert.False(t, rec.NextRun.IsZero())
+		receiveRun(t, runs, 2*time.Second)
+	})
 }
 
 // TestJobsRegisterExisting checks the stored record wins over the job: an active record is activated,
 // and a record left running by a stopped process is not running anymore.
 func TestJobsRegisterExisting(t *testing.T) {
-	clearTables(t)
-	_, err := Records.Create(&CronRecord{Handler: "existing", Name: "existing", Spec: everySecond, Active: true, Running: true, LogID: 9})
-	require.NoError(t, err)
-	job, runs := signalJob("existing", nil)
-	job.Spec = "0 0 * * *"
-	rec := registerJob(t, job)
-	assert.False(t, rec.Running)
-	assert.False(t, rec.LogID.Valid())
-	assert.Equal(t, everySecond, rec.Spec, "the stored spec is used")
-	receiveRun(t, runs, 2*time.Second)
+	synctest.Test(t, func(t *testing.T) {
+		clearTables(t)
+		_, err := Records.Create(&CronRecord{Handler: "existing", Name: "existing", Spec: everySecond, Active: true, Running: true, LogID: 9})
+		require.NoError(t, err)
+		job, runs := signalJob("existing", nil)
+		job.Spec = "0 0 * * *"
+		rec := registerJob(t, job)
+		assert.False(t, rec.Running)
+		assert.False(t, rec.LogID.Valid())
+		assert.Equal(t, everySecond, rec.Spec, "the stored spec is used")
+		receiveRun(t, runs, 2*time.Second)
+	})
 }
 
 func TestJobsStop(t *testing.T) {
-	clearTables(t)
-	job, runs := signalJob("stopped", nil)
-	job.Active = true
-	registerJob(t, job)
-	receiveRun(t, runs, 2*time.Second)
+	synctest.Test(t, func(t *testing.T) {
+		clearTables(t)
+		job, runs := signalJob("stopped", nil)
+		job.Active = true
+		registerJob(t, job)
+		receiveRun(t, runs, 2*time.Second)
 
-	Global.Stop()
-	waitStopped(t, Global.Job("stopped"), runs)
-	assert.True(t, Records.FindByHandler("stopped").Active, "the record is not changed")
+		Global.Stop()
+		waitStopped(t, Global.Job("stopped"), runs)
+		assert.True(t, Records.FindByHandler("stopped").Active, "the record is not changed")
+	})
 }
 
 func TestJobsNext(t *testing.T) {

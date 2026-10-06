@@ -2,6 +2,7 @@ package cron
 
 import (
 	"testing"
+	"testing/synctest"
 	"time"
 
 	"github.com/ordaen/orgo/pg"
@@ -53,34 +54,19 @@ func receiveRun(t *testing.T, runs <-chan *CronLog, wait time.Duration) *CronLog
 	}
 }
 
-// waitStopped waits until the schedule of the job is stopped and its last run finished,
-// and drains the runs, the job does not run anymore.
+// waitStopped checks the job is not scheduled, waits until its schedule loop returned after its last run
+// and drains the runs, the job does not run anymore. It must be called in a synctest bubble.
 func waitStopped(t *testing.T, job *Job, runs <-chan *CronLog) {
 	t.Helper()
 	assertNotScheduled(t, job)
-	waitLoops(t, job)
+	synctest.Wait()
 	for len(runs) > 0 {
 		<-runs
 	}
 }
 
-// waitLoops waits until the schedule loops of the job returned, after their running runs.
-func waitLoops(t *testing.T, job *Job) {
-	t.Helper()
-	done := make(chan struct{})
-	go func() {
-		job.sched.loops.Wait()
-		close(done)
-	}()
-	select {
-	case <-done:
-	case <-time.After(3 * time.Second):
-		t.Fatal("schedule not stopped")
-	}
-}
-
-// stopJobs stops the registered jobs matching match and waits for their running runs,
-// so they do not write to the tables of the next test.
+// stopJobs stops the registered jobs matching match and waits for their running runs, so they do not
+// write to the tables of the next test. The scheduled jobs run in synctest bubbles, it waits in the bubble.
 func stopJobs(t *testing.T, match func(*Job) bool) {
 	t.Helper()
 	Global.RLock()
@@ -91,9 +77,15 @@ func stopJobs(t *testing.T, match func(*Job) bool) {
 		}
 	}
 	Global.RUnlock()
+	scheduled := false
 	for _, j := range jobs {
+		j.sched.mu.Lock()
+		scheduled = scheduled || j.sched.cancel != nil
+		j.sched.mu.Unlock()
 		j.Stop()
-		waitLoops(t, j)
+	}
+	if scheduled {
+		synctest.Wait()
 	}
 }
 

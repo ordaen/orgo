@@ -3,6 +3,7 @@ package cron
 import (
 	"context"
 	"testing"
+	"testing/synctest"
 	"time"
 
 	"github.com/ordaen/orgo/pg"
@@ -54,28 +55,30 @@ func TestRegisterGroup(t *testing.T) {
 
 // TestRegisterGroupAgain checks a registered job gets its new definition and keeps its stored state.
 func TestRegisterGroupAgain(t *testing.T) {
-	clearTables(t)
-	cleanupGroup(t, "system")
-	job, oldRuns := signalJob("job", nil)
-	require.NoError(t, RegisterGroup("system", job))
-	rec := Records.FindByHandler("job")
-	require.NoError(t, rec.UpdateSpec(everySecond))
-	require.NoError(t, rec.Activate())
-	receiveRun(t, oldRuns, 2*time.Second)
-	old := Global.Job("job")
+	synctest.Test(t, func(t *testing.T) {
+		clearTables(t)
+		cleanupGroup(t, "system")
+		job, oldRuns := signalJob("job", nil)
+		require.NoError(t, RegisterGroup("system", job))
+		rec := Records.FindByHandler("job")
+		require.NoError(t, rec.UpdateSpec(everySecond))
+		require.NoError(t, rec.Activate())
+		receiveRun(t, oldRuns, 2*time.Second)
+		old := Global.Job("job")
 
-	renamed, newRuns := signalJob("job", nil)
-	renamed.Name = "Renamed"
-	renamed.Spec = "0 0 1 1 *"
-	require.NoError(t, RegisterGroup("system", renamed))
-	stored := Records.FindByHandler("job")
-	assert.Equal(t, "Renamed", stored.Name, "the name is updated")
-	assert.Equal(t, everySecond, stored.Spec, "the stored spec is kept")
-	assert.True(t, stored.Active, "the active state is kept")
+		renamed, newRuns := signalJob("job", nil)
+		renamed.Name = "Renamed"
+		renamed.Spec = "0 0 1 1 *"
+		require.NoError(t, RegisterGroup("system", renamed))
+		stored := Records.FindByHandler("job")
+		assert.Equal(t, "Renamed", stored.Name, "the name is updated")
+		assert.Equal(t, everySecond, stored.Spec, "the stored spec is kept")
+		assert.True(t, stored.Active, "the active state is kept")
 
-	// the new definition runs, the old schedule is stopped
-	receiveRun(t, newRuns, 2*time.Second)
-	waitStopped(t, old, oldRuns)
+		// the new definition runs, the old schedule is stopped
+		receiveRun(t, newRuns, 2*time.Second)
+		waitStopped(t, old, oldRuns)
+	})
 }
 
 func TestRegisterGroupsSeparate(t *testing.T) {
@@ -101,32 +104,34 @@ func TestRegisterGroupsSeparate(t *testing.T) {
 
 // TestDisableGroup checks a disabled plugin keeps its records, and they are resumed when it is enabled again.
 func TestDisableGroup(t *testing.T) {
-	clearTables(t)
-	cleanupGroup(t, "billing")
-	job, runs := signalJob("invoice", nil)
-	require.NoError(t, RegisterGroup("billing", job))
-	rec := Records.FindByHandler("invoice")
-	require.NoError(t, rec.Activate())
-	receiveRun(t, runs, 2*time.Second)
-	addLog(t, "invoice")
-	registered := Global.Job("invoice")
+	synctest.Test(t, func(t *testing.T) {
+		clearTables(t)
+		cleanupGroup(t, "billing")
+		job, runs := signalJob("invoice", nil)
+		require.NoError(t, RegisterGroup("billing", job))
+		rec := Records.FindByHandler("invoice")
+		require.NoError(t, rec.Activate())
+		receiveRun(t, runs, 2*time.Second)
+		addLog(t, "invoice")
+		registered := Global.Job("invoice")
 
-	DisableGroup("billing")
-	assert.Nil(t, Global.Job("invoice"))
-	waitStopped(t, registered, runs)
-	waitRecord(t, "invoice", func(r *CronRecord) bool { return !r.Running })
-	rec = Records.FindByHandler("invoice")
-	assert.True(t, rec.Active, "the record is kept active")
-	assert.False(t, rec.Registered())
-	assert.ErrorIs(t, rec.Run(), errCronJobNotFound)
-	assert.Positive(t, Logs.CountWhere("handler = ?", "invoice"), "the logs are kept")
+		DisableGroup("billing")
+		assert.Nil(t, Global.Job("invoice"))
+		waitStopped(t, registered, runs)
+		waitRecord(t, "invoice", func(r *CronRecord) bool { return !r.Running })
+		rec = Records.FindByHandler("invoice")
+		assert.True(t, rec.Active, "the record is kept active")
+		assert.False(t, rec.Registered())
+		assert.ErrorIs(t, rec.Run(), errCronJobNotFound)
+		assert.Positive(t, Logs.CountWhere("handler = ?", "invoice"), "the logs are kept")
 
-	// the startup of the other groups does not delete it
-	require.NoError(t, RegisterGroup("system"))
-	assert.True(t, Records.FindByHandler("invoice").ID.Valid())
+		// the startup of the other groups does not delete it
+		require.NoError(t, RegisterGroup("system"))
+		assert.True(t, Records.FindByHandler("invoice").ID.Valid())
 
-	require.NoError(t, RegisterGroup("billing", job))
-	receiveRun(t, runs, 2*time.Second)
+		require.NoError(t, RegisterGroup("billing", job))
+		receiveRun(t, runs, 2*time.Second)
+	})
 }
 
 func TestRemoveGroup(t *testing.T) {
