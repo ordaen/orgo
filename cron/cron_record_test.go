@@ -27,7 +27,7 @@ func TestActivateDeactivate(t *testing.T) {
 	clearTables(t)
 	job, runs := signalJob("schedule", nil)
 	rec := registerJob(t, job)
-	assertNoRun(t, runs, 1200*time.Millisecond)
+	assertNotScheduled(t, Global.Job("schedule"))
 
 	require.NoError(t, rec.Activate())
 	assert.True(t, rec.Active)
@@ -40,11 +40,7 @@ func TestActivateDeactivate(t *testing.T) {
 
 	require.NoError(t, rec.Deactivate())
 	assert.False(t, rec.Active)
-	waitRecord(t, "schedule", func(r *CronRecord) bool { return !r.Running })
-	for len(runs) > 0 {
-		<-runs
-	}
-	assertNoRun(t, runs, 1500*time.Millisecond)
+	waitStopped(t, Global.Job("schedule"), runs)
 	stored = Records.FindByHandler("schedule")
 	assert.False(t, stored.Active)
 	assert.True(t, stored.NextRun.IsZero())
@@ -68,7 +64,7 @@ func TestDeactivateDuringRun(t *testing.T) {
 	stored := waitRecord(t, "busy", func(r *CronRecord) bool { return !r.Running })
 	assert.False(t, stored.Active)
 	assert.True(t, stored.NextRun.IsZero())
-	assertNoRun(t, runs, 1500*time.Millisecond)
+	waitStopped(t, Global.Job("busy"), runs)
 }
 
 func TestActivateCanEnable(t *testing.T) {
@@ -94,7 +90,8 @@ func TestUpdateSpec(t *testing.T) {
 	job.Spec = "0 0 1 1 *"
 	rec := registerJob(t, job)
 	require.NoError(t, rec.Activate())
-	assertNoRun(t, runs, 1200*time.Millisecond)
+	next := Global.Job("respec").Next(time.Now())
+	assert.Equal(t, []any{time.January, 1}, []any{next.Month(), next.Day()}, "the job is scheduled by its spec")
 
 	require.NoError(t, rec.UpdateSpec(everySecond))
 	assert.Equal(t, everySecond, Records.FindByHandler("respec").Spec)
@@ -103,11 +100,11 @@ func TestUpdateSpec(t *testing.T) {
 
 func TestUpdateSpecInactive(t *testing.T) {
 	clearTables(t)
-	job, runs := signalJob("respec-inactive", nil)
+	job, _ := signalJob("respec-inactive", nil)
 	rec := registerJob(t, job)
 	require.NoError(t, rec.UpdateSpec("0 0 * * *"))
 	stored := Records.FindByHandler("respec-inactive")
 	assert.Equal(t, "0 0 * * *", stored.Spec)
 	assert.False(t, stored.Active)
-	assertNoRun(t, runs, 1200*time.Millisecond)
+	assertNotScheduled(t, Global.Job("respec-inactive"))
 }

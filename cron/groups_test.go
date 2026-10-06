@@ -12,7 +12,10 @@ import (
 
 // cleanupGroup removes the group from Global at the end of the test.
 func cleanupGroup(t *testing.T, group string) {
-	t.Cleanup(func() { RemoveGroup(group) })
+	t.Cleanup(func() {
+		stopJobs(t, func(j *Job) bool { return j.Type == group })
+		RemoveGroup(group)
+	})
 }
 
 // addLog adds a log with a message to the handler.
@@ -59,6 +62,7 @@ func TestRegisterGroupAgain(t *testing.T) {
 	require.NoError(t, rec.UpdateSpec(everySecond))
 	require.NoError(t, rec.Activate())
 	receiveRun(t, oldRuns, 2*time.Second)
+	old := Global.Job("job")
 
 	renamed, newRuns := signalJob("job", nil)
 	renamed.Name = "Renamed"
@@ -71,11 +75,7 @@ func TestRegisterGroupAgain(t *testing.T) {
 
 	// the new definition runs, the old schedule is stopped
 	receiveRun(t, newRuns, 2*time.Second)
-	waitRecord(t, "job", func(r *CronRecord) bool { return !r.Running })
-	for len(oldRuns) > 0 {
-		<-oldRuns
-	}
-	assertNoRun(t, oldRuns, 1500*time.Millisecond)
+	waitStopped(t, old, oldRuns)
 }
 
 func TestRegisterGroupsSeparate(t *testing.T) {
@@ -109,14 +109,12 @@ func TestDisableGroup(t *testing.T) {
 	require.NoError(t, rec.Activate())
 	receiveRun(t, runs, 2*time.Second)
 	addLog(t, "invoice")
+	registered := Global.Job("invoice")
 
 	DisableGroup("billing")
 	assert.Nil(t, Global.Job("invoice"))
+	waitStopped(t, registered, runs)
 	waitRecord(t, "invoice", func(r *CronRecord) bool { return !r.Running })
-	for len(runs) > 0 {
-		<-runs
-	}
-	assertNoRun(t, runs, 1500*time.Millisecond)
 	rec = Records.FindByHandler("invoice")
 	assert.True(t, rec.Active, "the record is kept active")
 	assert.False(t, rec.Registered())

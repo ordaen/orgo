@@ -5,6 +5,7 @@ import (
 	"time"
 
 	"github.com/ordaen/orgo/pg"
+	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
 
@@ -20,7 +21,10 @@ func clearTables(t *testing.T) {
 func registerJob(t *testing.T, job Job) *CronRecord {
 	t.Helper()
 	require.NoError(t, Global.Register(job))
-	t.Cleanup(func() { Global.Unregister(job.ID) })
+	t.Cleanup(func() {
+		stopJobs(t, func(j *Job) bool { return j.ID == job.ID })
+		Global.Unregister(job.ID)
+	})
 	rec := Records.FindByHandler(job.ID)
 	require.True(t, rec.ID.Valid())
 	return rec
@@ -49,13 +53,56 @@ func receiveRun(t *testing.T, runs <-chan *CronLog, wait time.Duration) *CronLog
 	}
 }
 
-func assertNoRun(t *testing.T, runs <-chan *CronLog, wait time.Duration) {
+// waitStopped waits until the schedule of the job is stopped and its last run finished,
+// and drains the runs, the job does not run anymore.
+func waitStopped(t *testing.T, job *Job, runs <-chan *CronLog) {
 	t.Helper()
-	select {
-	case <-runs:
-		t.Fatal("unexpected run")
-	case <-time.After(wait):
+	assertNotScheduled(t, job)
+	waitLoops(t, job)
+	for len(runs) > 0 {
+		<-runs
 	}
+}
+
+// waitLoops waits until the schedule loops of the job returned, after their running runs.
+func waitLoops(t *testing.T, job *Job) {
+	t.Helper()
+	done := make(chan struct{})
+	go func() {
+		job.sched.loops.Wait()
+		close(done)
+	}()
+	select {
+	case <-done:
+	case <-time.After(3 * time.Second):
+		t.Fatal("schedule not stopped")
+	}
+}
+
+// stopJobs stops the registered jobs matching match and waits for their running runs,
+// so they do not write to the tables of the next test.
+func stopJobs(t *testing.T, match func(*Job) bool) {
+	t.Helper()
+	Global.RLock()
+	var jobs []*Job
+	for _, j := range Global.jobs {
+		if match(j) {
+			jobs = append(jobs, j)
+		}
+	}
+	Global.RUnlock()
+	for _, j := range jobs {
+		j.Stop()
+		waitLoops(t, j)
+	}
+}
+
+// assertNotScheduled checks the job has no schedule, it does not run.
+func assertNotScheduled(t *testing.T, job *Job) {
+	t.Helper()
+	job.sched.mu.Lock()
+	defer job.sched.mu.Unlock()
+	assert.Nil(t, job.sched.cancel, "the job is not scheduled")
 }
 
 // waitRecord waits until the record of the handler matches cond.

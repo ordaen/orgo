@@ -37,11 +37,14 @@ type Job struct {
 	sched *schedule
 }
 
-// schedule runs a job at the times of its expression until it is stopped.
+// schedule runs a job at the times of its spec until it is stopped. Its loop owns its expression,
+// an expression is not safe for concurrent use: its Next updates it.
 type schedule struct {
 	mu     sync.Mutex
-	exp    *cronexpr.Expression
+	spec   string
 	cancel context.CancelFunc
+	// loops are the running loops, a stopped loop returns after its running run
+	loops sync.WaitGroup
 }
 
 // parseSpec parses the cron spec.
@@ -49,17 +52,17 @@ func parseSpec(spec string) (*cronexpr.Expression, error) {
 	return cronexpr.Parse(spec)
 }
 
-// expression returns the expression of the running schedule, or of the spec of the job when it is not scheduled.
+// expression returns a new expression of the spec of the running schedule, or of the job when it is not scheduled.
 func (j *Job) expression() *cronexpr.Expression {
+	spec := j.Spec
 	if j.sched != nil {
 		j.sched.mu.Lock()
-		exp := j.sched.exp
-		j.sched.mu.Unlock()
-		if exp != nil {
-			return exp
+		if j.sched.spec != "" {
+			spec = j.sched.spec
 		}
+		j.sched.mu.Unlock()
 	}
-	exp, _ := parseSpec(j.Spec)
+	exp, _ := parseSpec(spec)
 	return exp
 }
 
@@ -100,8 +103,8 @@ func (j *Job) ResetSpec(spec string) error {
 		j.sched.cancel()
 	}
 	ctx, cancel := context.WithCancel(context.Background())
-	j.sched.exp, j.sched.cancel = exp, cancel
-	go j.loop(ctx, exp)
+	j.sched.spec, j.sched.cancel = spec, cancel
+	j.sched.loops.Go(func() { j.loop(ctx, exp) })
 	return nil
 }
 
@@ -115,7 +118,7 @@ func (j *Job) Stop() {
 	if j.sched.cancel != nil {
 		j.sched.cancel()
 	}
-	j.sched.exp, j.sched.cancel = nil, nil
+	j.sched.spec, j.sched.cancel = "", nil
 }
 
 // loop runs the job at the times of exp until ctx is canceled. A run that is still running at the next time

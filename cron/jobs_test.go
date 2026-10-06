@@ -62,11 +62,7 @@ func TestJobsStop(t *testing.T) {
 	receiveRun(t, runs, 2*time.Second)
 
 	Global.Stop()
-	time.Sleep(50 * time.Millisecond)
-	for len(runs) > 0 {
-		<-runs
-	}
-	assertNoRun(t, runs, 1500*time.Millisecond)
+	waitStopped(t, Global.Job("stopped"), runs)
 	assert.True(t, Records.FindByHandler("stopped").Active, "the record is not changed")
 }
 
