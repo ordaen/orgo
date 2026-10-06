@@ -279,13 +279,16 @@ func toSnakeCase(str string) string {
 		if c >= 'A' && c <= 'Z' {
 			// Add underscore if it's not the start of the string,
 			// and if the previous character was lowercase (e.g. from ClientID -> tI -> t_i)
-			// OR if the next character is lowercase and the previous character is uppercase (e.g. from IDName -> ID_Name)
+			// OR if the next character is lowercase, so it starts a word (e.g. from IDName -> ID_Name),
+			// except the plural "s" of an initialism (e.g. UserIDs -> user_ids)
 			if i > 0 {
 				prev := str[i-1]
 				nextIsLower := i+1 < len(str) && str[i+1] >= 'a' && str[i+1] <= 'z'
 				prevIsUpper := prev >= 'A' && prev <= 'Z'
+				pluralS := prevIsUpper && i+1 < len(str) && str[i+1] == 's' &&
+					(i+2 == len(str) || str[i+2] >= 'A' && str[i+2] <= 'Z')
 
-				if (prev >= 'a' && prev <= 'z') || (nextIsLower && !prevIsUpper) {
+				if (prev >= 'a' && prev <= 'z') || (nextIsLower && !pluralS) {
 					b.WriteByte('_')
 				}
 			}

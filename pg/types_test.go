@@ -19,6 +19,13 @@ func TestToSnakeCase(t *testing.T) {
 		{input: "ClientID", expected: "client_id"},
 		{input: "CreatedAt", expected: "created_at"},
 		{input: "Name", expected: "name"},
+		{input: "APIKey", expected: "api_key"},
+		{input: "IDName", expected: "id_name"},
+		{input: "HTTPServer", expected: "http_server"},
+		{input: "ID", expected: "id"},
+		{input: "UserIDs", expected: "user_ids"},
+		{input: "IDsCount", expected: "ids_count"},
+		{input: "Field1Name", expected: "field1_name"},
 	}
 
 	for _, test := range tests {
