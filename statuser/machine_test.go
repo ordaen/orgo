@@ -4,11 +4,13 @@ import (
 	"context"
 	"errors"
 	"testing"
+	"testing/synctest"
 	"time"
 
 	"github.com/ordaen/orgo/events"
 	"github.com/ordaen/orgo/model"
 	"github.com/ordaen/orgo/pg"
+	"github.com/ordaen/orgo/pg/pgtest"
 	"github.com/ordaen/orgo/repo"
 	"github.com/ordaen/orgo/types"
 	"github.com/stretchr/testify/assert"
@@ -198,32 +200,37 @@ func TestMachineStatuses(t *testing.T) {
 // TestChangeStatusRecordFails checks the status is not changed when its record can not be written:
 // the update and the record are written in one transaction.
 func TestChangeStatusRecordFails(t *testing.T) {
-	orders := repo.NewCached(&order{}, nil)
-	m, _ := setupMachine(t, orders)
-	o := newOrder(t, orders)
-	_, err := pg.DB.Exec(t.Context(), `ALTER TABLE status_records ADD CONSTRAINT reason_ok CHECK (reason <> 'rejected')`)
-	require.NoError(t, err)
-	t.Cleanup(func() { pg.DB.Exec(context.Background(), `ALTER TABLE status_records DROP CONSTRAINT IF EXISTS reason_ok`) })
-	paidEvents := make(chan events.Event, 1)
-	t.Cleanup(events.System.Sub("order.paid", func(e events.Event) { paidEvents <- e }))
+	pgtest.Synctest(t, func(t *testing.T) {
+		orders := repo.NewCached(&order{}, nil)
+		m, _ := setupMachine(t, orders)
+		o := newOrder(t, orders)
+		_, err := pg.DB.Exec(t.Context(), `ALTER TABLE status_records ADD CONSTRAINT reason_ok CHECK (reason <> 'rejected')`)
+		require.NoError(t, err)
+		t.Cleanup(func() {
+			pg.DB.Exec(context.Background(), `ALTER TABLE status_records DROP CONSTRAINT IF EXISTS reason_ok`)
+		})
+		paidEvents := make(chan events.Event, 1)
+		t.Cleanup(events.System.Sub("order.paid", func(e events.Event) { paidEvents <- e }))
 
-	err = m.ChangeStatus(o, m.FindStatus("paid"), "rejected", nil)
-	assert.ErrorContains(t, err, "record status paid")
-	assert.Equal(t, "new", o.Status)
-	assert.Equal(t, "new", orders.FindByID(o.ID).Status, "the cache has the stored status")
-	var stored string
-	require.NoError(t, pg.DB.QueryRow(t.Context(), `SELECT status FROM orders WHERE id = $1`, o.ID).Scan(&stored))
-	assert.Equal(t, "new", stored, "the update is rolled back")
-	assert.Empty(t, StatusRecords.FindByOwner(o))
-	select {
-	case e := <-paidEvents:
-		t.Fatalf("unexpected event %+v", e)
-	case <-time.After(50 * time.Millisecond):
-	}
+		err = m.ChangeStatus(o, m.FindStatus("paid"), "rejected", nil)
+		assert.ErrorContains(t, err, "record status paid")
+		assert.Equal(t, "new", o.Status)
+		assert.Equal(t, "new", orders.FindByID(o.ID).Status, "the cache has the stored status")
+		var stored string
+		require.NoError(t, pg.DB.QueryRow(t.Context(), `SELECT status FROM orders WHERE id = $1`, o.ID).Scan(&stored))
+		assert.Equal(t, "new", stored, "the update is rolled back")
+		assert.Empty(t, StatusRecords.FindByOwner(o))
+		synctest.Wait()
+		select {
+		case e := <-paidEvents:
+			t.Fatalf("unexpected event %+v", e)
+		default:
+		}
 
-	// the next change succeeds
-	require.NoError(t, m.ChangeStatus(o, m.FindStatus("paid"), "ok", nil))
-	assert.Len(t, StatusRecords.FindByOwner(o), 1)
+		// the next change succeeds
+		require.NoError(t, m.ChangeStatus(o, m.FindStatus("paid"), "ok", nil))
+		assert.Len(t, StatusRecords.FindByOwner(o), 1)
+	})
 }
 
 func TestChangeStatusWithContext(t *testing.T) {

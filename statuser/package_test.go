@@ -64,5 +64,7 @@ func testConfig() pg.Config {
 		Password:     os.Getenv("DATABASE_PASSWORD"),
 		Host:         os.Getenv("DATABASE_HOST"),
 		Schema:       "orgo_statuser",
+		// the synctest bubbles open all the connections first, see pgtest.Synctest
+		MaxConns: 5,
 	}
 }
