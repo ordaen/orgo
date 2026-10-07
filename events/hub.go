@@ -8,6 +8,7 @@ import (
 	"sync"
 
 	"github.com/ordaen/orgo/model"
+	"github.com/ordaen/orgo/pg"
 )
 
 // Hub delivers its published events to the subscribers of their names and of All.
@@ -27,10 +28,10 @@ func NewHub(name string) *Hub {
 	return &Hub{name: name, subs: make(map[string][]*subscriber)}
 }
 
-// Pub publishes the model as an event named by its table. The subscribers get a shallow copy of the model,
-// so the publisher can change its fields after publishing.
+// Pub publishes the model as an event named by its type, returned by pg.ModelType, like "User" for models.User.
+// The subscribers get a shallow copy of the model, so the publisher can change its fields after publishing.
 func (h *Hub) Pub(m Model) {
-	h.publish(Event{Name: m.TableName(), Data: copyModel(m)})
+	h.publish(Event{Name: pg.ModelType(m), Data: copyModel(m)})
 }
 
 // PubDoc publishes the model as the named event, the subscribers get a shallow copy like for Pub.
@@ -48,9 +49,9 @@ func (h *Hub) PubData(name string, data any) {
 	h.publish(Event{Name: name, Data: data})
 }
 
-// PubID publishes an event named by the table with the record ID, returned by Event.ID.
-func (h *Hub) PubID(tableName string, id model.ModelID) {
-	h.publish(Event{Name: tableName, Data: id})
+// PubID publishes an event named by the model type, like Pub, with the record ID, returned by Event.ID.
+func (h *Hub) PubID(modelType string, id model.ModelID) {
+	h.publish(Event{Name: modelType, Data: id})
 }
 
 func (h *Hub) publish(e Event) {

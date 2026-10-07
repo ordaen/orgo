@@ -11,7 +11,7 @@ const (
 
 // ForwardEvents sends the record changes published to events.Creates, events.Updates and events.Deletes,
 // like by the repositories created with repo.WithEvents, to the connections subscribed to them: it calls
-// SendObjectID with ActionCreate, ActionUpdate or ActionDelete, the table and the record ID.
+// SendObjectID with ActionCreate, ActionUpdate or ActionDelete, the model type and the record ID.
 // It is not started by NewChan, an application forwards the changes on its own way by subscribing to the hubs
 // and calling SendObjectID. The returned function stops forwarding.
 //

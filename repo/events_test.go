@@ -71,7 +71,7 @@ func TestBaseWithEvents(t *testing.T) {
 
 		created, err := repo.Create(&baseModel{Name: "john"})
 		require.NoError(t, err)
-		want := eventOf{Name: "base_models", ID: created.ID.String()}
+		want := eventOf{Name: "baseModel", ID: created.ID.String()}
 		e := receiveEvent(t, evs.creates)
 		assert.Equal(t, want, eventOf{e.Name, e.ID()})
 		doc, ok := e.Doc().(*baseModel)
@@ -170,7 +170,7 @@ func TestCachedWithEvents(t *testing.T) {
 
 		created, err := repo.Create(&baseModel{Name: "john"})
 		require.NoError(t, err)
-		want := eventOf{Name: "base_models", ID: created.ID.String()}
+		want := eventOf{Name: "baseModel", ID: created.ID.String()}
 		e := receiveEvent(t, evs.creates)
 		assert.Equal(t, want, eventOf{e.Name, e.ID()})
 

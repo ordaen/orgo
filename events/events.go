@@ -1,7 +1,8 @@
 // Package events publishes named events with data to the subscribers of hubs. The repositories created with
-// repo.WithEvents publish their committed changes to the Creates, Updates and Deletes hubs, named by the table.
+// repo.WithEvents publish their committed changes to the Creates, Updates and Deletes hubs, named by the model type
+// returned by pg.ModelType.
 //
-//	unsubscribe := events.Updates.Sub("users", func(e events.Event) {
+//	unsubscribe := events.Updates.Sub("User", func(e events.Event) {
 //		user := e.Doc().(*User)
 //		...
 //	})
@@ -34,7 +35,7 @@ var (
 
 // PubSub publishes events and subscribes to them, it is implemented by Hub.
 type PubSub interface {
-	// Pub publishes the model as an event named by its table.
+	// Pub publishes the model as an event named by its type.
 	Pub(m Model)
 	// PubDoc publishes the model as the named event.
 	PubDoc(name string, m Model)
@@ -42,8 +43,8 @@ type PubSub interface {
 	PubEvent(name string)
 	// PubData publishes the named event with the data.
 	PubData(name string, data any)
-	// PubID publishes the ID as an event named by the table.
-	PubID(tableName string, id model.ModelID)
+	// PubID publishes the ID as an event named by the model type.
+	PubID(modelType string, id model.ModelID)
 	// Sub calls handler with the named events, or all events when name is All, until unsubscribe is called.
 	Sub(name string, handler EventFunc, opts ...SubOption) (unsubscribe func())
 	// SubFunc calls handler with the events of the names, until unsubscribe is called.

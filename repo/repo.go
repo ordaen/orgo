@@ -48,7 +48,7 @@ type options struct {
 }
 
 // WithEvents makes the repository publish the records it creates, updates and deletes
-// to events.Creates, events.Updates and events.Deletes. An event is published after the change is committed,
+// to events.Creates, events.Updates and events.Deletes, named by the model type. An event is published after the change is committed,
 // failed changes are not published.
 func WithEvents() Option {
 	return func(o *options) {

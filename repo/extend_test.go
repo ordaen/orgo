@@ -84,12 +84,12 @@ func TestRegister(t *testing.T) {
 
 	// the options are applied
 	ch := make(chan events.Event, 1)
-	t.Cleanup(events.Creates.Sub("base_models", func(e events.Event) { ch <- e }))
+	t.Cleanup(events.Creates.Sub("user", func(e events.Event) { ch <- e }))
 	created, err := users.Create(&user{Name: "jack"})
 	require.NoError(t, err)
 	select {
 	case e := <-ch:
-		assert.Equal(t, "base_models", e.Name)
+		assert.Equal(t, "user", e.Name)
 		assert.Equal(t, created.ID.String(), e.ID())
 	case <-time.After(time.Second):
 		t.Fatal("create event not received")

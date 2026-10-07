@@ -76,13 +76,13 @@ func TestHubs(t *testing.T) {
 		system, creates, updates, deletes := collect(t, System, All), collect(t, Creates, All), collect(t, Updates, All), collect(t, Deletes, All)
 
 		System.PubEvent("started")
-		Creates.PubID("users", model.ID(1))
-		Updates.PubID("users", model.ID(2))
-		Deletes.PubID("orders", model.ID(3))
+		Creates.PubID("User", model.ID(1))
+		Updates.PubID("User", model.ID(2))
+		Deletes.PubID("Order", model.ID(3))
 		assert.Equal(t, "started", receive(t, system).Name)
-		assert.Equal(t, Event{Name: "users", Data: model.ID(1)}, receive(t, creates))
-		assert.Equal(t, Event{Name: "users", Data: model.ID(2)}, receive(t, updates))
-		assert.Equal(t, Event{Name: "orders", Data: model.ID(3)}, receive(t, deletes))
+		assert.Equal(t, Event{Name: "User", Data: model.ID(1)}, receive(t, creates))
+		assert.Equal(t, Event{Name: "User", Data: model.ID(2)}, receive(t, updates))
+		assert.Equal(t, Event{Name: "Order", Data: model.ID(3)}, receive(t, deletes))
 		// hubs are separate
 		for _, ch := range []<-chan Event{system, creates, updates, deletes} {
 			assertNoEvent(t, ch)
@@ -93,13 +93,13 @@ func TestHubs(t *testing.T) {
 func TestPub(t *testing.T) {
 	synctest.Test(t, func(t *testing.T) {
 		h := NewHub("TEST")
-		ch := collect(t, h, "users")
+		ch := collect(t, h, "user")
 
 		u := &user{ID: 7, Name: "john"}
 		h.Pub(u)
 		u.Name = "changed after publishing"
 		e := receive(t, ch)
-		assert.Equal(t, "users", e.Name)
+		assert.Equal(t, "user", e.Name, "named by the model type")
 		assert.Equal(t, "7", e.ID())
 		doc, ok := e.Doc().(*user)
 		require.True(t, ok)
@@ -138,11 +138,11 @@ func TestPubVariants(t *testing.T) {
 		assert.Nil(t, e.Doc())
 		assert.Empty(t, e.ID(), "data is not an ID")
 
-		h.PubID("users", model.ID(5))
+		h.PubID("User", model.ID(5))
 		assert.Equal(t, "5", receive(t, ch).ID())
 
 		// the models and the IDs of any type
-		h.PubID("sessions", model.UUID("0b6f"))
+		h.PubID("Session", model.UUID("0b6f"))
 		assert.Equal(t, "0b6f", receive(t, ch).ID())
 		h.Pub(&session{ID: "1c7a"})
 		assert.Equal(t, "1c7a", receive(t, ch).ID())
