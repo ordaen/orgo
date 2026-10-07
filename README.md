@@ -136,4 +136,5 @@ Pull requests must follow these rules:
 
 ## License
 
-[Apache License 2.0](LICENSE)
+Licensed under the [Apache License, Version 2.0](LICENSE).
+Copyright 2026 David Iunevich PR Beograd.
