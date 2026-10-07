@@ -15,6 +15,14 @@ func TestChangeJSON(t *testing.T) {
 	b, err := json.Marshal(Change{Key: "key1", From: "from", To: "to"})
 	require.NoError(t, err)
 	assert.JSONEq(t, `{"key":"key1","from":"from","to":"to"}`, string(b))
+
+	var ch Changes
+	require.NoError(t, json.Unmarshal([]byte(`[{"key":"name","from":"a","to":"b"}, ["Active", "true", "false"]]`), &ch))
+	assert.Equal(t, Changes{{"name", "a", "b"}, {"Active", "true", "false"}}, ch)
+
+	var c Change
+	assert.Error(t, json.Unmarshal([]byte(`[1, 2, 3]`), &c))
+	assert.Error(t, json.Unmarshal([]byte(`"key"`), &c))
 }
 
 func TestChangesAdd(t *testing.T) {

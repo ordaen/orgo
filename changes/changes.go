@@ -3,6 +3,7 @@
 package changes
 
 import (
+	"bytes"
 	"cmp"
 	"encoding/json"
 	"fmt"
@@ -53,6 +54,21 @@ type Change struct {
 	From string `json:"from"`
 	// To is the new value.
 	To string `json:"to"`
+}
+
+// UnmarshalJSON reads a change as an object, or as the [key, from, to] array of the older stored changes.
+func (c *Change) UnmarshalJSON(data []byte) error {
+	if trimmed := bytes.TrimLeft(data, " \t\r\n"); len(trimmed) > 0 && trimmed[0] == '[' {
+		var a [3]string
+		if err := json.Unmarshal(data, &a); err != nil {
+			return err
+		}
+		*c = Change{Key: a[0], From: a[1], To: a[2]}
+		return nil
+	}
+	// The alias has no UnmarshalJSON, so decoding into it does not recurse.
+	type change Change
+	return json.Unmarshal(data, (*change)(c))
 }
 
 // Changes is a list of changes with unique keys.
