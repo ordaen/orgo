@@ -5,8 +5,8 @@ go 1.27.1
 require (
 	github.com/getsentry/sentry-go v0.49.0
 	github.com/gin-gonic/gin v1.12.0
-	github.com/gorhill/cronexpr v0.0.0-20180427100037-88b0669f7d75
 	github.com/gorilla/websocket v1.5.3
+	github.com/hashicorp/cronexpr v1.1.3
 	github.com/jackc/pgx/v5 v5.11.0
 	github.com/joho/godotenv v1.5.1
 	github.com/stretchr/testify v1.12.1

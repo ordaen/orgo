@@ -1,6 +1,8 @@
 /*!
  * Copyright 2013 Raymond Hill
  *
+ * Modifications 2020 - HashiCorp
+ *
  * Project: github.com/gorhill/cronexpr
  * File: cronexpr_parse.go
  * Version: 1.0
@@ -76,15 +78,15 @@ var (
 		"2090": 2090, "2091": 2091, "2092": 2092, "2093": 2093, "2094": 2094, "2095": 2095, "2096": 2096, "2097": 2097, "2098": 2098, "2099": 2099,
 	}
 	monthTokens = map[string]int{
-		`1`: 1, `jan`: 1, `january`: 1,
-		`2`: 2, `feb`: 2, `february`: 2,
-		`3`: 3, `mar`: 3, `march`: 3,
-		`4`: 4, `apr`: 4, `april`: 4,
-		`5`: 5, `may`: 5,
-		`6`: 6, `jun`: 6, `june`: 6,
-		`7`: 7, `jul`: 7, `july`: 7,
-		`8`: 8, `aug`: 8, `august`: 8,
-		`9`: 9, `sep`: 9, `september`: 9,
+		`1`: 1, `01`: 1, `jan`: 1, `january`: 1,
+		`2`: 2, `02`: 2, `feb`: 2, `february`: 2,
+		`3`: 3, `03`: 3, `mar`: 3, `march`: 3,
+		`4`: 4, `04`: 4, `apr`: 4, `april`: 4,
+		`5`: 5, `05`: 5, `may`: 5,
+		`6`: 6, `06`: 6, `jun`: 6, `june`: 6,
+		`7`: 7, `07`: 7, `jul`: 7, `july`: 7,
+		`8`: 8, `08`: 8, `aug`: 8, `august`: 8,
+		`9`: 9, `09`: 9, `sep`: 9, `september`: 9,
 		`10`: 10, `oct`: 10, `october`: 10,
 		`11`: 11, `nov`: 11, `november`: 11,
 		`12`: 12, `dec`: 12, `december`: 12,
@@ -319,6 +321,10 @@ func (expr *Expression) dowFieldHandler(s string) error {
 		case one:
 			populateOne(expr.daysOfWeek, directive.first)
 		case span:
+			// To properly handle spans that end in 7 (Sunday)
+			if directive.last == 0 {
+				directive.last = 6
+			}
 			populateMany(expr.daysOfWeek, directive.first, directive.last, directive.step)
 		case all:
 			populateMany(expr.daysOfWeek, directive.first, directive.last, directive.step)

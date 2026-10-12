@@ -8,7 +8,7 @@ import (
 	"sync"
 	"time"
 
-	"github.com/gorhill/cronexpr"
+	"github.com/hashicorp/cronexpr"
 	"github.com/ordaen/orgo/logs"
 	"github.com/ordaen/orgo/pg"
 )
