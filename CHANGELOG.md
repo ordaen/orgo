@@ -7,6 +7,8 @@ the API; breaking changes are listed under **Changed** or **Removed** and marked
 
 ## [Unreleased]
 
+## [v0.1.1] - 2026-10-12
+
 ### Changed
 
 - cron: parse the specs with `github.com/hashicorp/cronexpr`, the maintained fork, instead of the archived
@@ -23,5 +25,6 @@ the API; breaking changes are listed under **Changed** or **Removed** and marked
 
 The first tagged release.
 
-[Unreleased]: https://github.com/ordaen/orgo/compare/v0.1.0...HEAD
+[Unreleased]: https://github.com/ordaen/orgo/compare/v0.1.1...HEAD
+[v0.1.1]: https://github.com/ordaen/orgo/compare/v0.1.0...v0.1.1
 [v0.1.0]: https://github.com/ordaen/orgo/releases/tag/v0.1.0
