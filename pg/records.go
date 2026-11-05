@@ -22,13 +22,23 @@ func Insert[T Model](model T) (T, error) {
 
 // InsertWithContext is like Insert, but runs the query with ctx.
 func InsertWithContext[T Model](ctx context.Context, model T) (T, error) {
+	return insert(ctx, DB, model)
+}
+
+// InsertTx is like Insert, but runs the query in the transaction tx, like a model hook or a transaction of
+// several records. A failed insert aborts the transaction, which must then be rolled back.
+func InsertTx[T Model](ctx context.Context, tx Tx, model T) (T, error) {
+	return insert(ctx, tx, model)
+}
+
+func insert[T Model](ctx context.Context, conn Connection, model T) (T, error) {
 	query, err := BuildInsert(model)
 	if err != nil {
 		return model, err
 	}
 	qctx, held := holdFailedQuery(ctx, model)
 	defer held.release(false)
-	rows, err := DB.Query(qctx, query.SQL, query.Args...)
+	rows, err := conn.Query(qctx, query.SQL, query.Args...)
 	if err != nil {
 		return model, handleDBError(model, "create", Errorf("insert into %s: %w", model.TableName(), err), held)
 	}

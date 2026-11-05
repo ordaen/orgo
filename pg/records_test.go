@@ -103,6 +103,29 @@ func TestInsert(t *testing.T) {
 	assert.Equal(t, 1, countRows(t, "base_models"))
 }
 
+func TestInsertTx(t *testing.T) {
+	setupHookTest(t)
+	ctx := context.Background()
+
+	tx, err := DB.Begin(ctx)
+	require.NoError(t, err)
+	inserted, err := InsertTx(ctx, tx, &hookModel{Name: "john"})
+	require.NoError(t, err)
+	require.True(t, inserted.ID.Valid())
+	assert.Empty(t, inserted.Email, "BeforeCreate is not called")
+	assert.Empty(t, hookCalls)
+	require.NoError(t, tx.Rollback(ctx))
+	assert.Zero(t, countRows(t, "base_models"), "the insert is rolled back with the transaction")
+
+	tx, err = DB.Begin(ctx)
+	require.NoError(t, err)
+	_, err = InsertTx(ctx, tx, &hookModel{Name: "jane"})
+	require.NoError(t, err)
+	require.NoError(t, tx.Commit(ctx))
+	assert.Equal(t, 1, countRows(t, "base_models"))
+	assert.Zero(t, countRows(t, "hook_logs"), "AfterCreate is not called")
+}
+
 func TestInsertErrors(t *testing.T) {
 	_, err := Insert[*baseModel](nil)
 	require.EqualError(t, err, "[PG] model *pg.baseModel is nil")
