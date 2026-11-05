@@ -7,6 +7,13 @@ the API; breaking changes are listed under **Changed** or **Removed** and marked
 
 ## [Unreleased]
 
+## [v0.9.0] - 2026-11-05
+
+### Added
+
+- validator: `EmailFormat` and `PhoneFormat`, the formats of an email address and a phone number for `Format`,
+  `RequiredFormat` and `ValidateFormat`.
+
 ## [v0.8.0] - 2026-11-05
 
 ### Added
@@ -113,7 +120,8 @@ the API; breaking changes are listed under **Changed** or **Removed** and marked
 
 The first tagged release.
 
-[Unreleased]: https://github.com/ordaen/orgo/compare/v0.8.0...HEAD
+[Unreleased]: https://github.com/ordaen/orgo/compare/v0.9.0...HEAD
+[v0.9.0]: https://github.com/ordaen/orgo/compare/v0.8.0...v0.9.0
 [v0.8.0]: https://github.com/ordaen/orgo/compare/v0.7.0...v0.8.0
 [v0.7.0]: https://github.com/ordaen/orgo/compare/v0.6.0...v0.7.0
 [v0.6.0]: https://github.com/ordaen/orgo/compare/v0.5.0...v0.6.0
