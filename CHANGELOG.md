@@ -7,6 +7,8 @@ the API; breaking changes are listed under **Changed** or **Removed** and marked
 
 ## [Unreleased]
 
+## [v0.3.0] - 2026-11-05
+
 ### Added
 
 - gql: `SetMaxLimit` sets the largest limit of `NewPagination` and `Querier.FindMany`, `MaxLimit` (100) by default.
@@ -37,7 +39,8 @@ the API; breaking changes are listed under **Changed** or **Removed** and marked
 
 The first tagged release.
 
-[Unreleased]: https://github.com/ordaen/orgo/compare/v0.2.0...HEAD
+[Unreleased]: https://github.com/ordaen/orgo/compare/v0.3.0...HEAD
+[v0.3.0]: https://github.com/ordaen/orgo/compare/v0.2.0...v0.3.0
 [v0.2.0]: https://github.com/ordaen/orgo/compare/v0.1.1...v0.2.0
 [v0.1.1]: https://github.com/ordaen/orgo/compare/v0.1.0...v0.1.1
 [v0.1.0]: https://github.com/ordaen/orgo/releases/tag/v0.1.0
