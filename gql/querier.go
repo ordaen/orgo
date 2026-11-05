@@ -167,7 +167,7 @@ func changedColumns(ch Changes) []string {
 }
 
 // FindMany returns the records in the scopes matching the queries. The limit is DefaultLimit when it is not
-// given, at most MaxLimit. sort is validated, see Sort.
+// given, at most the limit set by SetMaxLimit. sort is validated, see Sort.
 func (r *Querier[T]) FindMany(ctx context.Context, limit *int, offset *int, sort *string, queries ...Where) ([]T, error) {
 	query, err := r.buildQuery(ctx, sort, queries)
 	if err != nil {

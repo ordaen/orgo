@@ -142,6 +142,13 @@ func TestFindMany(t *testing.T) {
 	assert.Len(t, recs, MaxLimit, "the limit is at most MaxLimit")
 	assert.Equal(t, "item-00", recs[0].Name, "a negative offset is ignored")
 
+	SetMaxLimit(110)
+	t.Cleanup(func() { SetMaxLimit(MaxLimit) })
+	recs, err = q.FindMany(ctx, new(1000), nil, new("name"))
+	require.NoError(t, err)
+	assert.Len(t, recs, 110, "the limit is at most the limit set by SetMaxLimit")
+	SetMaxLimit(MaxLimit)
+
 	recs, err = q.FindMany(ctx, new(3), new(2), new("name asc"))
 	require.NoError(t, err)
 	assert.Equal(t, []string{"item-02", "item-03", "item-04"}, names(recs))

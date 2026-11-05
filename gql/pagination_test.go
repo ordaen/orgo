@@ -27,3 +27,18 @@ func TestPagination(t *testing.T) {
 		assert.Equal(t, test.expectedOffset, pagination.Offset(), "index: %d", idx)
 	}
 }
+
+func TestSetMaxLimit(t *testing.T) {
+	t.Cleanup(func() { SetMaxLimit(MaxLimit) })
+
+	SetMaxLimit(1000)
+	assert.Equal(t, 1000, NewPagination(nil, new(1000)).Limit)
+	assert.Equal(t, 1000, NewPagination(nil, new(5000)).Limit)
+	assert.Equal(t, DefaultLimit, NewPagination(nil, nil).Limit)
+
+	// a limit that is not positive resets it to MaxLimit
+	SetMaxLimit(0)
+	assert.Equal(t, MaxLimit, NewPagination(nil, new(1000)).Limit)
+	SetMaxLimit(-1)
+	assert.Equal(t, MaxLimit, NewPagination(nil, new(1000)).Limit)
+}

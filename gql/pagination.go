@@ -1,14 +1,32 @@
 package gql
 
+import "sync/atomic"
+
 // The page and limit of NewPagination.
 const (
 	// DefaultPage is the page when it is not given.
 	DefaultPage = 1
 	// DefaultLimit is the limit when it is not given.
 	DefaultLimit = 10
-	// MaxLimit is the largest limit.
+	// MaxLimit is the default largest limit, see SetMaxLimit.
 	MaxLimit = 100
 )
+
+// maxLimit is the largest limit set by SetMaxLimit.
+var maxLimit atomic.Int64
+
+func init() {
+	maxLimit.Store(MaxLimit)
+}
+
+// SetMaxLimit sets the largest limit of NewPagination and Querier.FindMany, MaxLimit by default.
+// A limit that is not positive resets it to MaxLimit. Set it at application start, before serving requests.
+func SetMaxLimit(limit int) {
+	if limit <= 0 {
+		limit = MaxLimit
+	}
+	maxLimit.Store(int64(limit))
+}
 
 // Pagination is a struct that contains the pagination information
 type Pagination struct {
@@ -26,7 +44,7 @@ func (p *Pagination) Offset() int {
 }
 
 // NewPagination creates a new pagination with the given page and limit, DefaultPage and DefaultLimit
-// when they are not given or not positive, the limit is at most MaxLimit
+// when they are not given or not positive, the limit is at most the limit set by SetMaxLimit
 func NewPagination(page *int, limit *int) Pagination {
 	res := Pagination{
 		Page:  DefaultPage,
@@ -38,12 +56,12 @@ func NewPagination(page *int, limit *int) Pagination {
 	return res
 }
 
-// clampLimit returns the limit, DefaultLimit when it is not given or not positive, at most MaxLimit.
+// clampLimit returns the limit, DefaultLimit when it is not given or not positive, at most the limit set by SetMaxLimit.
 func clampLimit(limit *int) int {
 	if limit == nil || *limit <= 0 {
 		return DefaultLimit
 	}
-	return min(*limit, MaxLimit)
+	return min(*limit, int(maxLimit.Load()))
 }
 
 // PaginatedResponse is a struct that contains the paginated response for a list of items

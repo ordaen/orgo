@@ -7,6 +7,10 @@ the API; breaking changes are listed under **Changed** or **Removed** and marked
 
 ## [Unreleased]
 
+### Added
+
+- gql: `SetMaxLimit` sets the largest limit of `NewPagination` and `Querier.FindMany`, `MaxLimit` (100) by default.
+
 ## [v0.2.0] - 2026-11-05
 
 ### Added
