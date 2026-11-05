@@ -11,7 +11,7 @@ type Model interface {
 }
 
 // Base is embedded in models with an ID and the Created and Updated timestamps, which are set by the database
-// when the record is inserted and updated.
+// when the record is inserted and updated. A timestamp set on the model before the insert is kept.
 type Base[T ModelID] struct {
 	ID      T         `json:"id,omitempty"`
 	Created time.Time `json:"created" db:"created,created_at"`

@@ -97,6 +97,23 @@ func TestBuildInsertBaseModel(t *testing.T) {
 	assert.Equal(t, []any{"John Doe", "john.doe@example.com", user.Data}, query.Args)
 }
 
+func TestBuildInsertKeepsTimestamps(t *testing.T) {
+	created := time.Date(2025, 1, 20, 10, 0, 0, 0, time.UTC)
+	user := &baseModel{Name: "John Doe"}
+	user.Created = created
+
+	query, err := BuildInsert(user)
+	require.NoError(t, err)
+	assert.Equal(t, `INSERT INTO "base_models" ("created", "updated", "name") VALUES ($1, NOW(), $2) RETURNING *`, query.SQL)
+	assert.Equal(t, []any{created, "John Doe"}, query.Args)
+
+	user.Updated = created.Add(time.Hour)
+	query, err = BuildInsert(user)
+	require.NoError(t, err)
+	assert.Equal(t, `INSERT INTO "base_models" ("created", "updated", "name") VALUES ($1, $2, $3) RETURNING *`, query.SQL)
+	assert.Equal(t, []any{created, created.Add(time.Hour), "John Doe"}, query.Args)
+}
+
 func TestBuildInsertCreateOnlyModel(t *testing.T) {
 	user := &createOnlyModel{
 		Name:  "John Doe",

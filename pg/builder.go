@@ -57,7 +57,8 @@ func BuildUpdate[T Model](model T, fields ...string) (*PlainQuery, error) {
 }
 
 // BuildInsert builds an INSERT query for the given model.
-// When fields are given, only these columns are inserted. The created_at and updated_at columns are always set to NOW().
+// When fields are given, only these columns are inserted. The created_at and updated_at columns are set to NOW(),
+// unless the model sets them to a non-zero time, like a record imported with its original creation time.
 // The id column is inserted when the model ID is valid, like a UUID set by the application,
 // otherwise it is left to the database to generate.
 //
@@ -88,7 +89,12 @@ func BuildInsert[T Model](model T, fields ...string) (*PlainQuery, error) {
 			values = append(values, "$"+strconv.Itoa(len(args)))
 		case field.isCreatedAt || field.isUpdatedAt:
 			cols = append(cols, field.quoted)
-			values = append(values, "NOW()")
+			if value, zero := nonZeroValue(v, field.idx); !zero {
+				args = append(args, value)
+				values = append(values, "$"+strconv.Itoa(len(args)))
+			} else {
+				values = append(values, "NOW()")
+			}
 		case len(fields) == 0 || slices.Contains(fields, field.name):
 			value, zero := nonZeroValue(v, field.idx)
 			if zero {
