@@ -7,6 +7,8 @@ the API; breaking changes are listed under **Changed** or **Removed** and marked
 
 ## [Unreleased]
 
+## [v0.4.0] - 2026-11-05
+
 ### Added
 
 - types: `User` has the `RoleID`, `Email` and `Avatar` fields of the user, which `UserFields` does not store.
@@ -55,7 +57,8 @@ the API; breaking changes are listed under **Changed** or **Removed** and marked
 
 The first tagged release.
 
-[Unreleased]: https://github.com/ordaen/orgo/compare/v0.3.1...HEAD
+[Unreleased]: https://github.com/ordaen/orgo/compare/v0.4.0...HEAD
+[v0.4.0]: https://github.com/ordaen/orgo/compare/v0.3.1...v0.4.0
 [v0.3.1]: https://github.com/ordaen/orgo/compare/v0.3.0...v0.3.1
 [v0.3.0]: https://github.com/ordaen/orgo/compare/v0.2.0...v0.3.0
 [v0.2.0]: https://github.com/ordaen/orgo/compare/v0.1.1...v0.2.0
