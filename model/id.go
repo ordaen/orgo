@@ -154,3 +154,19 @@ func (id SID) String() string {
 func (id SID) Valid() bool {
 	return id != ""
 }
+
+// WithSID is a model with the SID of another system, like a record of an OpenStack resource. The logs and the
+// event IDs of such a model use its SID instead of its ID.
+type WithSID interface {
+	GetSID() SID
+}
+
+// OwnerID returns the SID of the model when it has a valid one, see WithSID, and its ID otherwise.
+func OwnerID(m Model) string {
+	if v, ok := m.(WithSID); ok {
+		if sid := v.GetSID(); sid.Valid() {
+			return sid.String()
+		}
+	}
+	return m.GetID().String()
+}

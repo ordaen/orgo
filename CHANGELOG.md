@@ -7,6 +7,26 @@ the API; breaking changes are listed under **Changed** or **Removed** and marked
 
 ## [Unreleased]
 
+### Added
+
+- model: `WithSID`, a model with the `SID` of another system, and `OwnerID`, its SID or its ID.
+- logger: `Log.WithOwner` sets the owner of a log to a record that is not a model, like an OpenStack resource.
+- logger: `Log.SortBy` lists the logs with the last first in the gql querier.
+
+### Changed
+
+- logger: `Log.WithModel` stores the SID of a model with one as the owner ID, see `model.WithSID`.
+- events: `Event.ID` returns the SID of a model with one, see `model.WithSID`, so `gql.GetIDFromEvent` and
+  `websocket.ForwardEvents` send the SIDs of these records.
+- gql: `Querier.Delete` logs the deleted record as the log data, like `logger.DeleteRecord`.
+
+### Fixed
+
+- gql: `Querier.Delete` uses the `Delete` method of a repository type embedding `repo.Base` or `repo.Cached`, it
+  used the `Delete` of the embedded repository.
+- logger: `CreateRecord` and `UpdateRecord` log the model given when the create or the update fails, they logged the
+  returned record, which may be nil.
+
 ## [v0.5.0] - 2026-11-05
 
 ### Added

@@ -171,3 +171,48 @@ func TestRecordError(t *testing.T) {
 	assert.Equal(t, "1", r.OwnerID)
 	assert.NotEmpty(t, r.Message)
 }
+
+type testSIDModel struct {
+	model.Base[model.ID]
+	OpenstackID string
+}
+
+func (*testSIDModel) TableName() string   { return "test_models" }
+func (*testSIDModel) ModelType() string   { return "Server" }
+func (m *testSIDModel) GetSID() model.SID { return model.SID(m.OpenstackID) }
+
+func TestOwner(t *testing.T) {
+	require.NoError(t, pg.ClearTables("logs"))
+	require.NoError(t, Info("sid").WithModel(&testSIDModel{Base: model.Base[model.ID]{ID: 3}, OpenstackID: "os-1"}).Create())
+	require.NoError(t, Info("owner").WithOwner("Volume", "vol-1").Create())
+
+	logs, err := Logs.Query().Order("id").Select()
+	require.NoError(t, err)
+	require.Len(t, logs, 2)
+	assert.Equal(t, "Server", logs[0].OwnerType)
+	assert.Equal(t, "os-1", logs[0].OwnerID, "the SID is the owner ID")
+	assert.Equal(t, "Volume", logs[1].OwnerType)
+	assert.Equal(t, "vol-1", logs[1].OwnerID)
+
+	assert.Equal(t, "created DESC", (&Log{}).SortBy(), "the gql querier lists the last first")
+}
+
+// TestCreateRecordError checks a failed create logs the model given, the returned one may be nil.
+func TestCreateRecordError(t *testing.T) {
+	require.NoError(t, pg.ClearTables("logs", "test_models"))
+	m, err := CreateRecord(testModels, &testModel{Name: "first"}, nil)
+	require.NoError(t, err)
+
+	_, err = CreateRecord(testModels, &testModel{Base: model.Base[model.ID]{ID: m.ID}, Name: "dup"}, nil)
+	require.Error(t, err)
+	_, err = UpdateRecord(testModels, &testModel{Base: model.Base[model.ID]{ID: 9999}, Name: "x"}, nil, nil, "name")
+	require.Error(t, err)
+
+	logs, err := Logs.Query().Where("level = ?", ERROR).Order("id").Select()
+	require.NoError(t, err)
+	require.Len(t, logs, 2)
+	assert.Equal(t, "create", logs[0].Action)
+	assert.Equal(t, m.ID.String(), logs[0].OwnerID)
+	assert.Equal(t, "update", logs[1].Action)
+	assert.Equal(t, "9999", logs[1].OwnerID)
+}

@@ -48,6 +48,9 @@ type Log struct {
 // TableName returns "logs".
 func (*Log) TableName() string { return "logs" }
 
+// SortBy orders the logs by creation time, the last first.
+func (*Log) SortBy() string { return "created DESC" }
+
 // WithUser sets the user fields of the log to the user, a nil user leaves them unchanged.
 func (m *Log) WithUser(user *types.User) *Log {
 	m.SetUserFields(user)
@@ -78,10 +81,19 @@ func (m *Log) WithData(data any) *Log {
 	return m
 }
 
-// WithModel sets the owner of the log to the model, its type and ID.
+// WithModel sets the owner of the log to the model: its type, and its SID when it has one, see model.WithSID,
+// or its ID.
 func (m *Log) WithModel(doc model.Model) *Log {
 	m.OwnerType = pg.ModelType(doc)
-	m.OwnerID = doc.GetID().String()
+	m.OwnerID = model.OwnerID(doc)
+	return m
+}
+
+// WithOwner sets the owner of the log to the record of the type with the id, like an OpenStack resource
+// that is not stored in a table.
+func (m *Log) WithOwner(ownerType, id string) *Log {
+	m.OwnerType = ownerType
+	m.OwnerID = id
 	return m
 }
 

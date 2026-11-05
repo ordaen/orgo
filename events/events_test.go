@@ -108,6 +108,20 @@ func TestPub(t *testing.T) {
 	})
 }
 
+type server struct {
+	model.Base[model.ID]
+	OpenstackID string
+}
+
+func (*server) TableName() string   { return "servers" }
+func (m *server) GetSID() model.SID { return model.SID(m.OpenstackID) }
+
+func TestEventIDSID(t *testing.T) {
+	assert.Equal(t, "os-1", Event{Name: "server", Data: &server{Base: model.Base[model.ID]{ID: 1}, OpenstackID: "os-1"}}.ID())
+	assert.Equal(t, "1", Event{Name: "server", Data: &server{Base: model.Base[model.ID]{ID: 1}}}.ID(), "no SID")
+	assert.Equal(t, "5", Event{Name: "id", Data: model.ID(5)}.ID())
+}
+
 func TestPubDoc(t *testing.T) {
 	synctest.Test(t, func(t *testing.T) {
 		h := NewHub("TEST")

@@ -41,7 +41,8 @@ func Debug(action string) *Log {
 func CreateRecord[T model.Model](r repo.Repository[T], m T, user *types.User) (T, error) {
 	mod, err := r.Create(m)
 	if err != nil {
-		Error("create").WithUser(user).WithModel(mod).WithMessage(err.Error()).Create()
+		// mod is not the created record, the model given is logged
+		Error("create").WithUser(user).WithModel(m).WithMessage(err.Error()).Create()
 		return mod, err
 	}
 	Info("create").WithUser(user).WithModel(mod).Create()
@@ -53,7 +54,8 @@ func CreateRecord[T model.Model](r repo.Repository[T], m T, user *types.User) (T
 func UpdateRecord[T model.Model](r repo.Repository[T], m T, user *types.User, changes changes.Changes, fields ...string) (T, error) {
 	mod, err := r.Update(m, fields...)
 	if err != nil {
-		Error("update").WithUser(user).WithModel(mod).WithMessage(err.Error()).WithChanges(changes).Create()
+		// mod is not the updated record, the model given is logged
+		Error("update").WithUser(user).WithModel(m).WithMessage(err.Error()).WithChanges(changes).Create()
 		return mod, err
 	}
 	Info("update").WithUser(user).WithModel(mod).WithChanges(changes).Create()

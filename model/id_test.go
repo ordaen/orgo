@@ -64,3 +64,17 @@ func TestUUIDGQL(t *testing.T) {
 	assert.Equal(t, UUID("abc"), id)
 	assert.Error(t, id.UnmarshalGQL(1))
 }
+
+type sidModel struct {
+	Base[ID]
+	OpenstackID string
+}
+
+func (*sidModel) TableName() string { return "sid_models" }
+func (m *sidModel) GetSID() SID     { return SID(m.OpenstackID) }
+
+func TestOwnerID(t *testing.T) {
+	assert.Equal(t, "7", OwnerID(&sidModel{Base: Base[ID]{ID: 7}}), "the ID without a SID")
+	assert.Equal(t, "e3b0c442", OwnerID(&sidModel{Base: Base[ID]{ID: 7}, OpenstackID: "e3b0c442"}))
+	assert.Equal(t, "8", OwnerID(&testModelWithUUID{Base: Base[UUID]{ID: "8"}}), "a model without GetSID")
+}

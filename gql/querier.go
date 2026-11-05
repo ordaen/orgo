@@ -65,18 +65,18 @@ func (r *Querier[T]) Find(ctx context.Context, id model.ModelID) (T, error) {
 	return rec, nil
 }
 
-// Delete deletes the record with the id in the scopes and logs the deletion by the user of the request
+// Delete deletes the record with the id in the scopes and logs the deletion by the user of the request, with
+// the deleted record as the log data, see logger.DeleteRecord. The record is deleted with the repository itself,
+// not a copy with ctx, so the Delete method of a repository type embedding repo.Base or repo.Cached is used.
 func (r *Querier[T]) Delete(ctx context.Context, id model.ModelID) (T, error) {
 	var empty T
 	rec, err := r.Find(ctx, id)
 	if err != nil {
 		return empty, err
 	}
-	if err := r.store.WithContext(ctx).Delete(rec); err != nil {
-		logger.Error("delete").WithUser(GetUser(ctx)).WithModel(rec).WithMessage(err.Error()).Create()
+	if err := logger.DeleteRecord(r.store, rec, GetUser(ctx)); err != nil {
 		return empty, err
 	}
-	logger.Info("delete").WithUser(GetUser(ctx)).WithModel(rec).Create()
 	return rec, nil
 }
 

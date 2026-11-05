@@ -70,11 +70,12 @@ func (e Event) Doc() Model {
 	return nil
 }
 
-// ID returns the ID of the model published by Pub or the ID published by PubID, or "".
+// ID returns the ID of the model published by Pub, its SID when it has one, see model.WithSID, or the ID
+// published by PubID, or "".
 func (e Event) ID() string {
 	switch v := e.Data.(type) {
 	case Model:
-		return v.GetID().String()
+		return model.OwnerID(v)
 	case model.ModelID:
 		return v.String()
 	}

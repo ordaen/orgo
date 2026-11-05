@@ -6,6 +6,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/ordaen/orgo/logger"
 	"github.com/ordaen/orgo/model"
 	"github.com/ordaen/orgo/pg"
 	"github.com/ordaen/orgo/repo"
@@ -266,4 +267,30 @@ func TestFindManyPaginated(t *testing.T) {
 
 	_, err = q.FindManyPaginated(ctx, nil, nil, new("bad sort"))
 	assert.Error(t, err)
+}
+
+// customItems is a repository type with its own Delete, which the querier must call.
+type customItems struct {
+	repo.Base[*item]
+	deleted []model.ID
+}
+
+func (s *customItems) Delete(m *item) error {
+	s.deleted = append(s.deleted, m.ID)
+	return s.Base.Delete(m)
+}
+
+func TestDeleteRepositoryMethod(t *testing.T) {
+	seeded := seedItems(t, 1)
+	store := repo.Register(&customItems{})
+	ctx := context.Background()
+
+	_, err := NewQuerier(store).Delete(ctx, seeded[0].ID)
+	require.NoError(t, err)
+	assert.Equal(t, []model.ID{seeded[0].ID}, store.deleted, "the Delete method of the repository type is used")
+	assert.Equal(t, 0, items.Count())
+
+	l, err := logger.Logs.Query().Where("action = 'delete'").First()
+	require.NoError(t, err)
+	assert.Contains(t, string(l.Data), `"item-00"`, "the deleted record is the log data")
 }
