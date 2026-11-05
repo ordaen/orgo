@@ -7,6 +7,12 @@ the API; breaking changes are listed under **Changed** or **Removed** and marked
 
 ## [Unreleased]
 
+## [v0.7.0] - 2026-11-05
+
+### Added
+
+- model: `ParseID` returns the ID in a decimal string, or 0 when the string is not an integer.
+
 ## [v0.6.0] - 2026-11-05
 
 ### Added
@@ -91,7 +97,8 @@ the API; breaking changes are listed under **Changed** or **Removed** and marked
 
 The first tagged release.
 
-[Unreleased]: https://github.com/ordaen/orgo/compare/v0.6.0...HEAD
+[Unreleased]: https://github.com/ordaen/orgo/compare/v0.7.0...HEAD
+[v0.7.0]: https://github.com/ordaen/orgo/compare/v0.6.0...v0.7.0
 [v0.6.0]: https://github.com/ordaen/orgo/compare/v0.5.0...v0.6.0
 [v0.5.0]: https://github.com/ordaen/orgo/compare/v0.4.0...v0.5.0
 [v0.4.0]: https://github.com/ordaen/orgo/compare/v0.3.1...v0.4.0
