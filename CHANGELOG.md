@@ -7,6 +7,14 @@ the API; breaking changes are listed under **Changed** or **Removed** and marked
 
 ## [Unreleased]
 
+## [v0.3.1] - 2026-11-05
+
+### Fixed
+
+- pg: `BuildInsert`, and so `CreateModel` and `Insert`, keep a non-zero `created_at` or `updated_at` field set on the
+  model, like a record imported with its original creation time, instead of always writing `NOW()`. A zero
+  field is still set to `NOW()`.
+
 ## [v0.3.0] - 2026-11-05
 
 ### Added
@@ -39,7 +47,8 @@ the API; breaking changes are listed under **Changed** or **Removed** and marked
 
 The first tagged release.
 
-[Unreleased]: https://github.com/ordaen/orgo/compare/v0.3.0...HEAD
+[Unreleased]: https://github.com/ordaen/orgo/compare/v0.3.1...HEAD
+[v0.3.1]: https://github.com/ordaen/orgo/compare/v0.3.0...v0.3.1
 [v0.3.0]: https://github.com/ordaen/orgo/compare/v0.2.0...v0.3.0
 [v0.2.0]: https://github.com/ordaen/orgo/compare/v0.1.1...v0.2.0
 [v0.1.1]: https://github.com/ordaen/orgo/compare/v0.1.0...v0.1.1
