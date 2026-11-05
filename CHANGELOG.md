@@ -7,6 +7,8 @@ the API; breaking changes are listed under **Changed** or **Removed** and marked
 
 ## [Unreleased]
 
+## [v0.2.0] - 2026-11-05
+
 ### Added
 
 - pg: `Config.NullZero` makes the model updates write the zero values, like `""`, `0` or a zero `time.Time`, as
@@ -31,6 +33,7 @@ the API; breaking changes are listed under **Changed** or **Removed** and marked
 
 The first tagged release.
 
-[Unreleased]: https://github.com/ordaen/orgo/compare/v0.1.1...HEAD
+[Unreleased]: https://github.com/ordaen/orgo/compare/v0.2.0...HEAD
+[v0.2.0]: https://github.com/ordaen/orgo/compare/v0.1.1...v0.2.0
 [v0.1.1]: https://github.com/ordaen/orgo/compare/v0.1.0...v0.1.1
 [v0.1.0]: https://github.com/ordaen/orgo/releases/tag/v0.1.0
