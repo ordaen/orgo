@@ -30,6 +30,12 @@ func (id ID) Valid() bool {
 	return id > 0
 }
 
+// ParseID returns the ID in the decimal string s, or 0, which is not a valid ID, when s is not an integer.
+func ParseID(s string) ID {
+	n, _ := strconv.Atoi(s)
+	return ID(n)
+}
+
 // UnmarshalGQL implements the graphql.Unmarshaler interface. The value must be a string, an empty string is 0.
 func (id *ID) UnmarshalGQL(v any) error {
 	s, ok := v.(string)

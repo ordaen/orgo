@@ -9,6 +9,12 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
+func TestParseID(t *testing.T) {
+	for in, want := range map[string]ID{"42": 42, "0": 0, "": 0, "abc": 0, "1.5": 0, "-3": -3} {
+		assert.Equal(t, want, ParseID(in), in)
+	}
+}
+
 func TestUUIDJSON(t *testing.T) {
 	b, err := json.Marshal(UUID(`a"b`))
 	require.NoError(t, err)
