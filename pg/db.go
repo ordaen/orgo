@@ -63,6 +63,11 @@ type Config struct {
 	// Logger logs the queries and the errors of the repositories using the global DB. When it is nil,
 	// slog.Default() is used.
 	Logger Logger
+	// NullZero makes the model updates write the zero values, like "", 0, false or a zero time.Time, as NULL,
+	// as go-pg does by default. A field tagged `db:",usezero"` is still written as it is.
+	// It applies to every model write of the process, it is set by Connect and kept until the next Connect.
+	// ConnectWithPool does not set it.
+	NullZero bool
 }
 
 // ConnectionParams are the connection parameters of Config. Zero values are not added to the DSN,
@@ -154,6 +159,8 @@ func ConnectWithContext(ctx context.Context, cfg Config) error {
 	}
 	DB.setLogger(cfg.Logger)
 	DB.pool.Store(pool)
+	// set before the migration, the init functions can write models
+	nullZero.Store(cfg.NullZero)
 
 	if err := migrateSchema(ctx, cfg.AllowTableDrops); err != nil {
 		closeHalfConnected()

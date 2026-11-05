@@ -6,6 +6,7 @@ import (
 	"slices"
 	"strconv"
 	"strings"
+	"sync/atomic"
 
 	"github.com/jackc/pgx/v5"
 )
@@ -18,6 +19,7 @@ type PlainQuery struct {
 
 // BuildUpdate builds an UPDATE query for the given model.
 // When fields are given, only these columns are updated. The updated_at column is always set to NOW().
+// The zero values are written as they are, or as NULL with Config.NullZero, see updateValue.
 func BuildUpdate[T Model](model T, fields ...string) (*PlainQuery, error) {
 	info, v, err := modelFor(model)
 	if err != nil {
@@ -36,7 +38,7 @@ func BuildUpdate[T Model](model T, fields ...string) (*PlainQuery, error) {
 		case field.isUpdatedAt:
 			sets = append(sets, field.quoted+" = NOW()")
 		case len(fields) == 0 || slices.Contains(fields, field.name):
-			args = append(args, fieldValue(v, field.idx))
+			args = append(args, updateValue(v, field))
 			sets = append(sets, field.quoted+" = $"+strconv.Itoa(len(args)))
 		}
 	}
@@ -199,6 +201,46 @@ func fieldValue(v reflect.Value, idx []int) any {
 		return nil
 	}
 	return f.Interface()
+}
+
+// nullZero is Config.NullZero of the last Connect.
+var nullZero atomic.Bool
+
+// updateValue returns the field value as an update query argument. With Config.NullZero a zero value is NULL,
+// unless the field is tagged usezero.
+func updateValue(v reflect.Value, field fieldInfo) any {
+	if !nullZero.Load() || field.useZero {
+		return fieldValue(v, field.idx)
+	}
+	f, err := v.FieldByIndexErr(field.idx)
+	if err != nil || isZero(f) {
+		return nil
+	}
+	return f.Interface()
+}
+
+// isZeroer is implemented by the types with their own zero check, like time.Time.
+type isZeroer interface {
+	IsZero() bool
+}
+
+// isZero reports whether f is a zero value, using its IsZero method when the type has one:
+// a time.Time with a location is zero for IsZero, not for reflect.
+// A pointer is zero only when it is nil, a non-nil pointer to a zero value is not zero.
+func isZero(f reflect.Value) bool {
+	switch f.Kind() {
+	case reflect.Pointer, reflect.Interface, reflect.Map, reflect.Slice:
+		return f.IsNil()
+	}
+	if z, ok := f.Interface().(isZeroer); ok {
+		return z.IsZero()
+	}
+	if f.CanAddr() {
+		if z, ok := f.Addr().Interface().(isZeroer); ok {
+			return z.IsZero()
+		}
+	}
+	return f.IsZero()
 }
 
 // quotedID is the quoted id column.

@@ -17,6 +17,8 @@ type fieldInfo struct {
 	fieldKind   reflect.Kind
 	isUpdatedAt bool
 	isCreatedAt bool
+	// useZero is set by the usezero tag option: the update writes the zero value even with Config.NullZero.
+	useZero bool
 }
 
 type modelInfo struct {
@@ -143,6 +145,8 @@ func extractFields(t reflect.Type, baseIdx []int, list []fieldInfo, visiting map
 				info.isUpdatedAt = true
 			case "created_at":
 				info.isCreatedAt = true
+			case "usezero":
+				info.useZero = true
 			}
 		}
 		list = append(list, info)

@@ -3,6 +3,7 @@ package pg
 import (
 	"context"
 	"testing"
+	"time"
 
 	"github.com/ordaen/orgo/model"
 	"github.com/stretchr/testify/assert"
@@ -173,6 +174,110 @@ func TestBuildZeroValues(t *testing.T) {
 	require.NoError(t, err)
 	assert.Equal(t, `UPDATE "values_models" SET "updated" = NOW(), "active" = $1, "note" = $2 WHERE "id" = $3 RETURNING *`, query.SQL)
 	assert.Equal(t, []any{false, &note, model.ID(3)}, query.Args)
+}
+
+// setNullZero sets Config.NullZero for the test, as Connect does, and restores it after.
+func setNullZero(t *testing.T, on bool) {
+	prev := nullZero.Swap(on)
+	t.Cleanup(func() { nullZero.Store(prev) })
+}
+
+type nullZeroModel struct {
+	model.Base[model.ID]
+	Name      string
+	Count     int
+	Kept      int `db:",usezero"`
+	RemovedAt time.Time
+	Note      *string
+	Tags      []string
+	Data      BaseModelData
+}
+
+func (m *nullZeroModel) TableName() string {
+	return "null_zero_models"
+}
+
+func TestBuildUpdateNullZero(t *testing.T) {
+	setNullZero(t, true)
+
+	// zero values are NULL, except the usezero field, a non-nil pointer to a zero value and an empty slice
+	note := ""
+	query, err := BuildUpdate(&nullZeroModel{Base: model.Base[model.ID]{ID: 3}, Note: &note, Tags: []string{}})
+	require.NoError(t, err)
+	assert.Equal(t, `UPDATE "null_zero_models" SET "updated" = NOW(), "name" = $1, "count" = $2, "kept" = $3, "removed_at" = $4, "note" = $5, "tags" = $6, "data" = $7 WHERE "id" = $8 RETURNING *`, query.SQL)
+	assert.Equal(t, []any{nil, nil, 0, nil, &note, []string{}, nil, model.ID(3)}, query.Args)
+
+	// a zero time.Time with a location is zero, IsZero is used
+	query, err = BuildUpdate(&nullZeroModel{Base: model.Base[model.ID]{ID: 3}, RemovedAt: time.Time{}.In(time.FixedZone("UTC+1", 3600))}, "removed_at")
+	require.NoError(t, err)
+	assert.Equal(t, []any{nil, model.ID(3)}, query.Args)
+
+	// non-zero values are written as they are
+	removed := time.Date(2026, 1, 2, 3, 4, 5, 0, time.UTC)
+	data := BaseModelData{Name: "John"}
+	query, err = BuildUpdate(&nullZeroModel{Base: model.Base[model.ID]{ID: 3}, Name: "John", Count: 2, Kept: 1, RemovedAt: removed, Data: data},
+		"name", "count", "kept", "removed_at", "data")
+	require.NoError(t, err)
+	assert.Equal(t, []any{"John", 2, 1, removed, data, model.ID(3)}, query.Args)
+
+	// inserts are not changed, the zero values are left to the column defaults
+	query, err = BuildInsert(&nullZeroModel{Name: "John"})
+	require.NoError(t, err)
+	assert.Equal(t, `INSERT INTO "null_zero_models" ("created", "updated", "name") VALUES (NOW(), NOW(), $1) RETURNING *`, query.SQL)
+}
+
+func TestBuildUpdateWithoutNullZero(t *testing.T) {
+	setNullZero(t, false)
+
+	query, err := BuildUpdate(&nullZeroModel{Base: model.Base[model.ID]{ID: 3}}, "name", "count", "kept", "removed_at")
+	require.NoError(t, err)
+	assert.Equal(t, []any{"", 0, 0, time.Time{}, model.ID(3)}, query.Args)
+}
+
+func TestUpdateModelNullZeroOnDatabase(t *testing.T) {
+	ctx := context.Background()
+	_, err := DB.Exec(ctx, `CREATE TABLE IF NOT EXISTS null_zero_models (
+		"id" Bigserial,
+		"name" Text UNIQUE,
+		"count" Integer,
+		"kept" Integer,
+		"removed_at" Timestamptz,
+		"note" Text,
+		"tags" Text[],
+		"data" JSONB,
+		"created" Timestamptz DEFAULT now(),
+		"updated" Timestamptz DEFAULT now(),
+		PRIMARY KEY ( "id" ) );`)
+	require.NoError(t, err)
+	t.Cleanup(func() { DB.Exec(ctx, "DROP TABLE IF EXISTS null_zero_models") })
+	setNullZero(t, true)
+
+	removed := time.Now().UTC().Truncate(time.Microsecond)
+	first, err := CreateModel(&nullZeroModel{Name: "John", Count: 2, Kept: 1, RemovedAt: removed})
+	require.NoError(t, err)
+	second, err := CreateModel(&nullZeroModel{Name: "Jane"})
+	require.NoError(t, err)
+
+	// clear the fields: stored as NULL, kept as 0
+	first.Name, first.Count, first.Kept, first.RemovedAt = "", 0, 0, time.Time{}
+	updated, err := UpdateModel(first)
+	require.NoError(t, err)
+	assert.Equal(t, "", updated.Name)
+	assert.True(t, updated.RemovedAt.IsZero())
+
+	var nameNull, countNull, keptNull, removedNull bool
+	require.NoError(t, DB.QueryRow(ctx,
+		"SELECT name IS NULL, count IS NULL, kept IS NULL, removed_at IS NULL FROM null_zero_models WHERE id = $1", first.ID,
+	).Scan(&nameNull, &countNull, &keptNull, &removedNull))
+	assert.True(t, nameNull)
+	assert.True(t, countNull)
+	assert.False(t, keptNull, "the usezero field is written as 0")
+	assert.True(t, removedNull)
+
+	// NULLs do not collide on the unique column, empty strings would
+	second.Name = ""
+	_, err = UpdateModel(second, "name")
+	require.NoError(t, err)
 }
 
 func TestBuildInsertWithFields(t *testing.T) {

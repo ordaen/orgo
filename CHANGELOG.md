@@ -7,6 +7,12 @@ the API; breaking changes are listed under **Changed** or **Removed** and marked
 
 ## [Unreleased]
 
+### Added
+
+- pg: `Config.NullZero` makes the model updates write the zero values, like `""`, `0` or a zero `time.Time`, as
+  NULL, as go-pg does by default. A field tagged `db:",usezero"` is still written as it is. Inserts are not
+  changed, they already leave the zero values to the column defaults.
+
 ## [v0.1.1] - 2026-10-12
 
 ### Changed
