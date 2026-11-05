@@ -7,6 +7,14 @@ the API; breaking changes are listed under **Changed** or **Removed** and marked
 
 ## [Unreleased]
 
+### Added
+
+- types: `User` has the `RoleID`, `Email` and `Avatar` fields of the user, which `UserFields` does not store.
+
+### Removed
+
+- types: the unused `scope:"admins"` struct tags of `UserFields`.
+
 ## [v0.3.1] - 2026-11-05
 
 ### Fixed

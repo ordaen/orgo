@@ -2,19 +2,23 @@ package types
 
 import "github.com/ordaen/orgo/model"
 
-// User is a user acting on records, with the IP address of the request.
+// User is a user acting on records, with the IP address of the request. RoleID, Email and Avatar are not stored
+// by UserFields.
 type User struct {
-	ID   model.ID `json:"id,omitempty"`
-	Name string   `json:"name,omitempty"`
-	IP   string   `json:"ip,omitempty"`
-	Type string   `json:"type,omitempty"`
+	ID     model.ID `json:"id,omitempty"`
+	RoleID model.ID `json:"role_id,omitempty"`
+	Email  string   `json:"email,omitempty"`
+	Name   string   `json:"name,omitempty"`
+	IP     string   `json:"ip,omitempty"`
+	Type   string   `json:"type,omitempty"`
+	Avatar string   `json:"avatar,omitempty"`
 }
 
 // UserFields is embedded in the records storing the user that created them, see SetUserFields.
 type UserFields struct {
-	UserID   model.ID `json:"user_id,omitempty,readonly" scope:"admins"`
+	UserID   model.ID `json:"user_id,omitempty,readonly"`
 	UserName string   `json:"user_name,omitempty,readonly"`
-	UserIP   string   `json:"user_ip,omitempty,readonly" scope:"admins"`
+	UserIP   string   `json:"user_ip,omitempty,readonly"`
 	UserType string   `json:"user_type,omitempty,readonly"`
 }
 
