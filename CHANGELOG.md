@@ -7,6 +7,22 @@ the API; breaking changes are listed under **Changed** or **Removed** and marked
 
 ## [Unreleased]
 
+## [v0.8.0] - 2026-11-05
+
+### Added
+
+- crypt: `NewDeterministicString` encrypts with a nonce derived from the plain string, the former `NewString`.
+- crypt: `SetLegacyKey`, `LegacyPrefix` and `String.IsLegacy` decode the strings of the legacy format, AES-CFB
+  prefixed with `:rsa:`. New strings are never written in this format.
+
+### Changed
+
+- crypt: **Breaking** `NewString` encrypts with a random nonce, so the same string encrypts to a different value
+  each time. Use `NewDeterministicString` to find a value with an equality query.
+- crypt: **Breaking** `String.MarshalJSON` writes the encrypted value instead of `"****"`, and `UnmarshalJSON` keeps
+  an encrypted value as it is, so a `String` stored in a JSON column round-trips. GraphQL still masks it, and
+  `UnmarshalGQL` always encrypts the value it receives.
+
 ## [v0.7.0] - 2026-11-05
 
 ### Added
@@ -97,7 +113,8 @@ the API; breaking changes are listed under **Changed** or **Removed** and marked
 
 The first tagged release.
 
-[Unreleased]: https://github.com/ordaen/orgo/compare/v0.7.0...HEAD
+[Unreleased]: https://github.com/ordaen/orgo/compare/v0.8.0...HEAD
+[v0.8.0]: https://github.com/ordaen/orgo/compare/v0.7.0...v0.8.0
 [v0.7.0]: https://github.com/ordaen/orgo/compare/v0.6.0...v0.7.0
 [v0.6.0]: https://github.com/ordaen/orgo/compare/v0.5.0...v0.6.0
 [v0.5.0]: https://github.com/ordaen/orgo/compare/v0.4.0...v0.5.0
