@@ -7,6 +7,8 @@ the API; breaking changes are listed under **Changed** or **Removed** and marked
 
 ## [Unreleased]
 
+## [v0.6.0] - 2026-11-05
+
 ### Added
 
 - model: `WithSID`, a model with the `SID` of another system, and `OwnerID`, its SID or its ID.
@@ -89,7 +91,8 @@ the API; breaking changes are listed under **Changed** or **Removed** and marked
 
 The first tagged release.
 
-[Unreleased]: https://github.com/ordaen/orgo/compare/v0.5.0...HEAD
+[Unreleased]: https://github.com/ordaen/orgo/compare/v0.6.0...HEAD
+[v0.6.0]: https://github.com/ordaen/orgo/compare/v0.5.0...v0.6.0
 [v0.5.0]: https://github.com/ordaen/orgo/compare/v0.4.0...v0.5.0
 [v0.4.0]: https://github.com/ordaen/orgo/compare/v0.3.1...v0.4.0
 [v0.3.1]: https://github.com/ordaen/orgo/compare/v0.3.0...v0.3.1
