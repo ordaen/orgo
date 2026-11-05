@@ -1,6 +1,7 @@
 package model
 
 import (
+	"encoding/json"
 	"errors"
 	"fmt"
 	"io"
@@ -10,7 +11,7 @@ import (
 // ErrInvalidIDFormat is returned by ID.UnmarshalJSON when the value is not an integer.
 var ErrInvalidIDFormat = errors.New("invalid ID format")
 
-// ModelID is the ID of a Model, like ID or UUID.
+// ModelID is the ID of a Model, like ID, UUID or SID.
 type ModelID interface {
 	String() string
 	Valid() bool
@@ -101,24 +102,19 @@ func (uuid UUID) Valid() bool {
 
 // MarshalJSON implements the json.Marshaler interface. The UUID is written as a string.
 func (uuid UUID) MarshalJSON() ([]byte, error) {
-	return []byte("\"" + uuid.String() + "\""), nil
+	return json.Marshal(string(uuid))
 }
 
-// UnmarshalJSON implements the json.Unmarshaler interface. An empty value leaves the UUID unchanged.
+// UnmarshalJSON implements the json.Unmarshaler interface. It accepts a string, null and an empty string leave
+// the UUID unchanged.
 func (uuid *UUID) UnmarshalJSON(b []byte) error {
-	if len(b) == 0 {
-		return nil
+	var s *string
+	if err := json.Unmarshal(b, &s); err != nil {
+		return err
 	}
-	if b[0] == '"' {
-		b = b[1:]
+	if s != nil && *s != "" {
+		*uuid = UUID(*s)
 	}
-	if b[len(b)-1] == '"' {
-		b = b[:len(b)-1]
-	}
-	if len(b) == 0 {
-		return nil
-	}
-	*uuid = UUID(string(b))
 	return nil
 }
 
@@ -143,4 +139,18 @@ func (uuid *UUID) UnmarshalGQL(v any) error {
 	}
 	*uuid = UUID(s)
 	return nil
+}
+
+// SID is a string ID given by another system, in any format, like the IDs of the OpenStack resources: UUIDs,
+// hexadecimal IDs without dashes or names like "default". It is encoded as a plain string in JSON and GraphQL.
+type SID string
+
+// String returns the SID as it is.
+func (id SID) String() string {
+	return string(id)
+}
+
+// Valid reports whether the SID is not empty.
+func (id SID) Valid() bool {
+	return id != ""
 }

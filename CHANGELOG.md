@@ -7,6 +7,16 @@ the API; breaking changes are listed under **Changed** or **Removed** and marked
 
 ## [Unreleased]
 
+### Added
+
+- model: `SID`, a string ID given by another system in any format, like the OpenStack resource IDs, which are not
+  always UUIDs. It is encoded as a plain string in JSON and GraphQL.
+
+### Fixed
+
+- model: `UUID.UnmarshalJSON` leaves the UUID unchanged for a JSON `null`, it was set to `"null"`, and decodes the
+  escaped characters. `UUID.MarshalJSON` escapes them. A value that is not a string, like a number, is an error.
+
 ## [v0.4.0] - 2026-11-05
 
 ### Added
