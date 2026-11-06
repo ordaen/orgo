@@ -43,6 +43,9 @@ type CronRecord struct {
 // TableName returns "cron_records".
 func (m *CronRecord) TableName() string { return "cron_records" }
 
+// SortBy orders the records by name.
+func (*CronRecord) SortBy() string { return "name" }
+
 // Options returns the options of the job of the record, empty options when the job is not registered.
 func (m *CronRecord) Options() *JobOptions {
 	job := m.job()

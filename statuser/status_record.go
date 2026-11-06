@@ -64,6 +64,9 @@ type StatusRecord struct {
 // TableName returns "status_records".
 func (m *StatusRecord) TableName() string { return "status_records" }
 
+// SortBy orders the records by id, the last first.
+func (*StatusRecord) SortBy() string { return "id DESC" }
+
 // Short returns the record without its owner.
 func (m *StatusRecord) Short() ShortStatusRecord {
 	return ShortStatusRecord{Status: m.Status, Reason: m.Reason, Time: m.Created, User: m.Issuer}

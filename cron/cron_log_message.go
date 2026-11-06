@@ -23,3 +23,6 @@ type CronLogMessage struct {
 
 // TableName returns "cron_log_messages".
 func (m *CronLogMessage) TableName() string { return "cron_log_messages" }
+
+// SortBy orders the messages by id, the last first.
+func (*CronLogMessage) SortBy() string { return "id DESC" }

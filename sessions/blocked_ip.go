@@ -176,6 +176,9 @@ func (m *BlockedIP) TableName() string {
 	return "blocked_ips"
 }
 
+// SortBy orders the blocked IPs by IP.
+func (*BlockedIP) SortBy() string { return "ip" }
+
 // SecondsLeft returns the seconds left of a temporary block at now, 0 for a permanent or expired block.
 func (m *BlockedIP) SecondsLeft(now time.Time) int64 {
 	if m.Period <= 0 {
