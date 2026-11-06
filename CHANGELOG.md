@@ -7,6 +7,14 @@ the API; breaking changes are listed under **Changed** or **Removed** and marked
 
 ## [Unreleased]
 
+## [v0.11.0] - 2026-11-06
+
+### Added
+
+- cron, statuser, sessions: `SortBy`, the default order of the gql querier when the client gives no sort:
+  `CronLog` by `created DESC`, `CronLogMessage` and `StatusRecord` by `id DESC`, `CronRecord` by `name` and
+  `BlockedIP` by `ip`.
+
 ## [v0.10.0] - 2026-11-05
 
 ### Added
@@ -127,6 +135,7 @@ the API; breaking changes are listed under **Changed** or **Removed** and marked
 The first tagged release.
 
 [Unreleased]: https://github.com/ordaen/orgo/compare/v0.10.0...HEAD
+[v0.11.0]: https://github.com/ordaen/orgo/compare/v0.10.0...v0.11.0
 [v0.10.0]: https://github.com/ordaen/orgo/compare/v0.9.0...v0.10.0
 [v0.9.0]: https://github.com/ordaen/orgo/compare/v0.8.0...v0.9.0
 [v0.8.0]: https://github.com/ordaen/orgo/compare/v0.7.0...v0.8.0
