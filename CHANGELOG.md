@@ -7,6 +7,16 @@ the API; breaking changes are listed under **Changed** or **Removed** and marked
 
 ## [Unreleased]
 
+## [v0.12.0] - 2026-11-09
+
+### Changed
+
+- cron: a scheduled run claims its time by moving `next_run` to the following one, so instances scheduling the same
+  jobs run each time once; the others skip it without logging.
+- cron: a running job refreshes its record every minute. A lock without heartbeat for 5 minutes is left by a stopped
+  process: a run takes it over and `Register` releases it. **Breaking**: `Register` no longer releases the lock of a
+  live instance, and after a crash a job stays locked for up to 5 minutes.
+
 ## [v0.11.0] - 2026-11-06
 
 ### Added
@@ -134,7 +144,8 @@ the API; breaking changes are listed under **Changed** or **Removed** and marked
 
 The first tagged release.
 
-[Unreleased]: https://github.com/ordaen/orgo/compare/v0.10.0...HEAD
+[Unreleased]: https://github.com/ordaen/orgo/compare/v0.12.0...HEAD
+[v0.12.0]: https://github.com/ordaen/orgo/compare/v0.11.0...v0.12.0
 [v0.11.0]: https://github.com/ordaen/orgo/compare/v0.10.0...v0.11.0
 [v0.10.0]: https://github.com/ordaen/orgo/compare/v0.9.0...v0.10.0
 [v0.9.0]: https://github.com/ordaen/orgo/compare/v0.8.0...v0.9.0
