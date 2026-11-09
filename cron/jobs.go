@@ -7,6 +7,7 @@ import (
 	"time"
 
 	"github.com/ordaen/orgo/logs"
+	"github.com/ordaen/orgo/pg"
 )
 
 // Jobs are the registered jobs, scheduled by their records.
@@ -19,8 +20,8 @@ type Jobs struct {
 
 // Register adds the job and creates its record, or activates it when its record is active. The Type of the job
 // is its group, see RegisterGroup. The database must be connected. The stored name and type of the record are
-// updated, its spec and active state are kept. A record left running by a previous process is marked not running,
-// its run was interrupted, which assumes a single application instance, see the package documentation.
+// updated, its spec and active state are kept. A record left running by a stopped process, without heartbeat
+// for staleAfter, is marked not running: its run was interrupted. The run of a live instance is kept.
 func (c *Jobs) Register(job Job) error {
 	return c.register(job, false)
 }
@@ -66,8 +67,15 @@ func (c *Jobs) register(job Job, replace bool) error {
 	}
 	fields := []string{}
 	if rec.Running {
-		rec.Running, rec.LogID = false, 0
-		fields = append(fields, "running", "log_id")
+		// only a lock without heartbeat is left by a stopped process; a live instance keeps its run
+		n, err := pg.Exec(`UPDATE cron_records SET running = FALSE, log_id = NULL
+			WHERE id = $1 AND running AND updated < now() - $2 * interval '1 second'`, rec.ID, staleAfter.Seconds())
+		if err != nil {
+			return fmt.Errorf("release cron record %s: %w", job.ID, err)
+		}
+		if n > 0 {
+			rec.Running, rec.LogID = false, 0
+		}
 	}
 	if rec.Name != job.Name || rec.Type != job.Type {
 		rec.Name, rec.Type = job.Name, job.Type

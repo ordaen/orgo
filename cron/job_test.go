@@ -1,11 +1,13 @@
 package cron
 
 import (
+	"context"
 	"errors"
 	"sync"
 	"testing"
 	"time"
 
+	"github.com/ordaen/orgo/pg"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -133,4 +135,74 @@ func TestJobNext(t *testing.T) {
 	bad := &Job{Spec: "bad"}
 	assert.True(t, bad.Next(now).IsZero())
 	assert.Nil(t, bad.NextN(now, 2))
+}
+
+// TestJobRunSlotOnce checks the instances scheduling a job run each time once: the first one claims it.
+func TestJobRunSlotOnce(t *testing.T) {
+	clearTables(t)
+	job, runs := signalJob("slot", nil)
+	job.Spec = "0 0 * * *"
+	registerJob(t, job)
+	j := Global.Job("slot")
+	exp, err := parseSpec("0 * * * *")
+	require.NoError(t, err)
+	slot := time.Date(2026, 1, 1, 10, 0, 0, 0, time.UTC)
+
+	require.NoError(t, j.run(context.Background(), exp, slot))
+	receiveRun(t, runs, time.Second)
+	rec := Records.FindByHandler("slot")
+	assert.Equal(t, exp.Next(time.Now()), rec.NextRun.Local(), "the finished run sets the next time from now")
+
+	// another instance firing for the same time, or an earlier one, skips it
+	_, err = pg.Exec(`UPDATE cron_records SET next_run = $1 WHERE handler = 'slot'`, slot.Add(time.Hour))
+	require.NoError(t, err)
+	assert.ErrorIs(t, j.run(context.Background(), exp, slot), errSlotTaken)
+	assert.Len(t, runs, 0)
+
+	// the next time runs
+	require.NoError(t, j.run(context.Background(), exp, slot.Add(time.Hour)))
+	receiveRun(t, runs, time.Second)
+}
+
+// TestJobRunTakesStaleLock checks a lock left by a stopped process is taken over, a live one is not.
+func TestJobRunTakesStaleLock(t *testing.T) {
+	clearTables(t)
+	job, runs := signalJob("stale", nil)
+	job.Spec = "0 0 * * *"
+	rec := registerJob(t, job)
+
+	_, err := pg.Exec(`UPDATE cron_records SET running = TRUE WHERE handler = 'stale'`)
+	require.NoError(t, err)
+	assert.ErrorIs(t, rec.Run(), ErrRunning)
+
+	_, err = pg.Exec(`UPDATE cron_records SET updated = now() - interval '1 hour' WHERE handler = 'stale'`)
+	require.NoError(t, err)
+	require.NoError(t, rec.Run())
+	receiveRun(t, runs, time.Second)
+	assert.False(t, Records.FindByHandler("stale").Running)
+}
+
+// TestJobHeartbeat checks a running job keeps its lock alive.
+func TestJobHeartbeat(t *testing.T) {
+	clearTables(t)
+	prev := heartbeatInterval
+	heartbeatInterval = 50 * time.Millisecond
+	t.Cleanup(func() { heartbeatInterval = prev })
+
+	release := make(chan struct{})
+	job, runs := signalJob("beat", release)
+	job.Spec = "0 0 * * *"
+	rec := registerJob(t, job)
+	_, err := rec.Execute()
+	require.NoError(t, err)
+	receiveRun(t, runs, time.Second)
+
+	_, err = pg.Exec(`UPDATE cron_records SET updated = now() - interval '1 hour' WHERE handler = 'beat'`)
+	require.NoError(t, err)
+	require.Eventually(t, func() bool {
+		return time.Since(Records.FindByHandler("beat").Updated) < time.Minute
+	}, time.Second, 10*time.Millisecond, "the heartbeat refreshes the record")
+	assert.ErrorIs(t, rec.Run(), ErrRunning, "a live lock is not taken over")
+	close(release)
+	waitRecord(t, "beat", func(r *CronRecord) bool { return !r.Running })
 }

@@ -10,11 +10,23 @@ import (
 
 	"github.com/hashicorp/cronexpr"
 	"github.com/ordaen/orgo/logs"
+	"github.com/ordaen/orgo/model"
 	"github.com/ordaen/orgo/pg"
 )
 
 // ErrRunning is returned when a job is run while it is running, by this or another process.
 var ErrRunning = errors.New("cron job is already running")
+
+// errSlotTaken is returned when another process already ran the scheduled time of a job.
+var errSlotTaken = errors.New("cron job already ran at this time")
+
+var (
+	// heartbeatInterval is how often a running job marks its record alive.
+	heartbeatInterval = time.Minute
+	// staleAfter is how long a record marked running without a heartbeat is held by a stopped process:
+	// its lock can be taken over.
+	staleAfter = 5 * time.Minute
+)
 
 // JobOptions restrict the changes of a job by its record.
 type JobOptions struct {
@@ -137,15 +149,16 @@ func (j *Job) loop(ctx context.Context, exp *cronexpr.Expression) {
 			return
 		case <-timer.C:
 		}
-		if err := j.run(ctx, exp); err != nil && !errors.Is(err, ErrRunning) {
+		if err := j.run(ctx, exp, next); err != nil && !errors.Is(err, ErrRunning) && !errors.Is(err, errSlotTaken) {
 			logs.Error(err, fmt.Sprintf("cron job %s:", j.ID))
 		}
 	}
 }
 
-// run runs the job and records the run. exp is the expression of the schedule running it, nil for a manual run.
-func (j *Job) run(ctx context.Context, exp *cronexpr.Expression) error {
-	rec, log, err := j.begin()
+// run runs the job and records the run. exp is the expression of the schedule running it at the time slot,
+// nil for a manual run.
+func (j *Job) run(ctx context.Context, exp *cronexpr.Expression, slot time.Time) error {
+	rec, log, err := j.begin(exp, slot)
 	if err != nil {
 		return err
 	}
@@ -154,7 +167,7 @@ func (j *Job) run(ctx context.Context, exp *cronexpr.Expression) error {
 
 // runInBackground begins the run and runs the job in the background.
 func (j *Job) runInBackground() (*CronLog, error) {
-	rec, log, err := j.begin()
+	rec, log, err := j.begin(nil, time.Time{})
 	if err != nil {
 		return nil, err
 	}
@@ -163,17 +176,34 @@ func (j *Job) runInBackground() (*CronLog, error) {
 }
 
 // begin marks the record of the job running and creates the log of the run. The record is marked with a
-// conditional update, so a job runs once at a time, also when it is run by several processes.
-func (j *Job) begin() (*CronRecord, *CronLog, error) {
+// conditional update, so a job runs once at a time, also when it is run by several processes; a lock without
+// heartbeat for staleAfter, left by a stopped process, is taken over. A scheduled run also claims its time
+// slot by moving next_run to the following one: the other processes scheduling the job skip that time.
+func (j *Job) begin(exp *cronexpr.Expression, slot time.Time) (*CronRecord, *CronLog, error) {
 	rec := Records.FindByHandler(j.ID)
 	if !rec.ID.Valid() {
 		return nil, nil, fmt.Errorf("cron job '%s' not found", j.ID)
 	}
-	n, err := pg.Exec(`UPDATE cron_records SET running = TRUE, updated = now() WHERE id = $1 AND running IS NOT TRUE`, rec.ID)
+	const free = `(running IS NOT TRUE OR updated < now() - $2 * interval '1 second')`
+	var n int64
+	var err error
+	if exp == nil {
+		n, err = pg.Exec(`UPDATE cron_records SET running = TRUE, updated = now() WHERE id = $1 AND `+free,
+			rec.ID, staleAfter.Seconds())
+	} else {
+		next := exp.Next(slot)
+		n, err = pg.Exec(`UPDATE cron_records SET running = TRUE, updated = now(), next_run = $4
+			WHERE id = $1 AND `+free+` AND (next_run IS NULL OR next_run <= $3)`,
+			rec.ID, staleAfter.Seconds(), slot, next)
+		rec.NextRun = next
+	}
 	if err != nil {
 		return nil, nil, err
 	}
 	if n == 0 {
+		if exp != nil && !Records.FindByID(rec.ID).Running {
+			return nil, nil, errSlotTaken
+		}
 		return nil, nil, ErrRunning
 	}
 	rec.Running = true
@@ -202,7 +232,9 @@ func (j *Job) release(rec *CronRecord) {
 // finish runs the job function, completes its log and updates its record. The next run is set when the schedule
 // exp running it is not stopped.
 func (j *Job) finish(ctx context.Context, rec *CronRecord, log *CronLog, exp *cronexpr.Expression) error {
+	stop := j.heartbeat(rec.ID)
 	err := j.runWithRecovery(log)
+	stop()
 	log.SetComplete(err)
 
 	rec.Running = false
@@ -221,6 +253,32 @@ func (j *Job) finish(ctx context.Context, rec *CronRecord, log *CronLog, exp *cr
 		logs.Error(uerr, fmt.Sprintf("cron job %s update record:", j.ID))
 	}
 	return err
+}
+
+// heartbeat marks the running record alive every heartbeatInterval until the returned func is called, so
+// other processes don't take its lock over.
+func (j *Job) heartbeat(id model.ID) (stop func()) {
+	done := make(chan struct{})
+	finished := make(chan struct{})
+	go func() {
+		defer close(finished)
+		ticker := time.NewTicker(heartbeatInterval)
+		defer ticker.Stop()
+		for {
+			select {
+			case <-done:
+				return
+			case <-ticker.C:
+				if _, err := pg.Exec(`UPDATE cron_records SET updated = now() WHERE id = $1 AND running`, id); err != nil {
+					logs.Error(err, fmt.Sprintf("cron job %s heartbeat:", j.ID))
+				}
+			}
+		}
+	}()
+	return func() {
+		close(done)
+		<-finished
+	}
 }
 
 func (j *Job) runWithRecovery(log *CronLog) (err error) {

@@ -155,7 +155,7 @@ func (m *CronRecord) Run() error {
 	if job == nil {
 		return errCronJobNotFound
 	}
-	return job.run(context.Background(), nil)
+	return job.run(context.Background(), nil, time.Time{})
 }
 
 // Execute runs the job in the background and returns the log of its run,

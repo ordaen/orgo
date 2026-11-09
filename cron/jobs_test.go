@@ -4,6 +4,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/ordaen/orgo/pg"
 	"github.com/ordaen/orgo/pg/pgtest"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -49,6 +50,9 @@ func TestJobsRegisterExisting(t *testing.T) {
 		clearTables(t)
 		_, err := Records.Create(&CronRecord{Handler: "existing", Name: "existing", Spec: everySecond, Active: true, Running: true, LogID: 9})
 		require.NoError(t, err)
+		// the process holding the lock stopped: no heartbeat for longer than staleAfter
+		_, err = pg.Exec(`UPDATE cron_records SET updated = now() - interval '1 hour' WHERE handler = 'existing'`)
+		require.NoError(t, err)
 		job, runs := signalJob("existing", nil)
 		job.Spec = "0 0 * * *"
 		rec := registerJob(t, job)
@@ -79,4 +83,16 @@ func TestJobsNext(t *testing.T) {
 	assert.True(t, next.After(time.Now()))
 	_, err = Global.Next("bad")
 	assert.Error(t, err)
+}
+
+// TestJobsRegisterKeepsLiveRun checks a starting instance keeps the run of a live one.
+func TestJobsRegisterKeepsLiveRun(t *testing.T) {
+	clearTables(t)
+	_, err := Records.Create(&CronRecord{Handler: "live", Name: "live", Spec: "0 0 * * *", Running: true, LogID: 9})
+	require.NoError(t, err)
+	job, _ := signalJob("live", nil)
+	rec := registerJob(t, job)
+	assert.True(t, rec.Running)
+	assert.Equal(t, 9, int(rec.LogID))
+	assert.ErrorIs(t, rec.Run(), ErrRunning)
 }

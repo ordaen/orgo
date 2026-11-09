@@ -1,10 +1,12 @@
 // Package cron runs registered jobs by their cron specs, stores their state in cron_records and their runs
 // with their messages in cron_logs and cron_log_messages. A job runs only while its record is active.
 //
-// The jobs are meant to be scheduled by a single application instance. A run marks its record running with
-// a conditional update, so a job does not run twice at the same time, ErrRunning is returned instead. But
-// Register marks a record left running as not running, assuming its process stopped during the run: when
-// several instances register the same jobs, a starting instance can release the run of another one.
+// Several application instances can schedule the same jobs. A run marks its record running with a
+// conditional update, so a job does not run twice at the same time, ErrRunning is returned instead, and a
+// scheduled run claims its time by moving next_run to the following one, so the other instances skip it.
+// A running job refreshes its record every heartbeatInterval: a lock without heartbeat for staleAfter is
+// left by a stopped process and is taken over. The instances' clocks should be in sync: an instance whose
+// clock is behind by more than the job period can run a time again.
 package cron
 
 // Global is the jobs of the application.
