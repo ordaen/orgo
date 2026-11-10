@@ -41,8 +41,18 @@ const (
 // AuthorizeFunc returns the user of the token, or nil when it is not valid
 type AuthorizeFunc func(token string) *types.User
 
+// AuthorizeRequestFunc returns the user of the token sent on the connection opened by the request r, or nil when
+// it is not valid: it can check the token against the request, e.g. its client IP.
+type AuthorizeRequestFunc func(r *http.Request, token string) *types.User
+
 // NewChan returns a Chan authorizing its connections with auth. It works right away, no goroutine is started for it.
 func NewChan(auth AuthorizeFunc) *Chan {
+	return NewChanRequest(func(_ *http.Request, token string) *types.User { return auth(token) })
+}
+
+// NewChanRequest returns a Chan authorizing its connections with auth, which also gets the request that opened the
+// connection. It works right away, no goroutine is started for it.
+func NewChanRequest(auth AuthorizeRequestFunc) *Chan {
 	return &Chan{auth: auth, connections: make(map[*connection]struct{})}
 }
 
@@ -56,7 +66,7 @@ type Chan struct {
 	// SendQueue is the number of messages queued for a connection, DefaultSendQueue when it is 0
 	SendQueue int
 
-	auth        AuthorizeFunc
+	auth        AuthorizeRequestFunc
 	mu          sync.RWMutex
 	connections map[*connection]struct{}
 }
@@ -91,7 +101,7 @@ func (h *Chan) Handler(w http.ResponseWriter, r *http.Request) {
 		logs.Error(err, "Websocket handshake error: ")
 		return
 	}
-	c := newConnection(h, ws)
+	c := newConnection(h, ws, r)
 	h.mu.Lock()
 	h.connections[c] = struct{}{}
 	h.mu.Unlock()

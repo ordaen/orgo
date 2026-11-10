@@ -2,6 +2,7 @@ package websocket
 
 import (
 	"encoding/json"
+	"net/http"
 	"slices"
 	"sync"
 	"time"
@@ -21,10 +22,11 @@ type messageIn struct {
 	Collections []string            `json:"collections"`
 }
 
-func newConnection(hub *Chan, conn *websocket.Conn) *connection {
+func newConnection(hub *Chan, conn *websocket.Conn, req *http.Request) *connection {
 	return &connection{
 		hub:              hub,
 		conn:             conn,
+		req:              req,
 		send:             make(chan []byte, hub.sendQueue()),
 		done:             make(chan struct{}),
 		subscribedModels: make(subscribedModels),
@@ -36,6 +38,7 @@ func newConnection(hub *Chan, conn *websocket.Conn) *connection {
 type connection struct {
 	hub       *Chan
 	conn      *websocket.Conn
+	req       *http.Request // the request that opened the connection, for the authorization
 	send      chan []byte
 	done      chan struct{}
 	closeOnce sync.Once
@@ -134,7 +137,7 @@ func (c *connection) authorize(msg messageIn) {
 	token, _ := msg.Data.(string)
 	var user *types.User
 	if c.hub.auth != nil {
-		user = c.hub.auth(token)
+		user = c.hub.auth(c.req, token)
 	}
 	if user == nil || !user.ID.Valid() {
 		user = nil

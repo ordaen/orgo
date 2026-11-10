@@ -121,6 +121,32 @@ func connections(h *Chan) int {
 	return len(h.connections)
 }
 
+// TestAuthorizeRequest checks the authorization gets the request that opened the connection.
+func TestAuthorizeRequest(t *testing.T) {
+	h := NewChanRequest(func(r *http.Request, token string) *types.User {
+		if r.Header.Get("X-Test") != "allowed" {
+			return nil
+		}
+		return testAuth(token)
+	})
+	h.DisableUsers = true
+	srv := httptest.NewServer(http.HandlerFunc(h.Handler))
+	t.Cleanup(srv.Close)
+	url := "ws" + strings.TrimPrefix(srv.URL, "http")
+
+	refused := dial(t, url)
+	refused.cmd("authorize", map[string]any{"data": "user-1"})
+	refused.assertNoMessage()
+
+	conn, _, err := websocket.DefaultDialer.Dial(url, http.Header{"X-Test": {"allowed"}})
+	require.NoError(t, err)
+	t.Cleanup(func() { conn.Close() })
+	require.NoError(t, conn.WriteJSON(map[string]any{"cmd": "authorize", "data": "user-1"}))
+	_, msg, err := conn.ReadMessage()
+	require.NoError(t, err)
+	assert.Equal(t, `{"chan":"authorized"}`, string(msg))
+}
+
 func TestAuthorize(t *testing.T) {
 	h, url := newTestChan(t)
 	h.DisableUsers = true
