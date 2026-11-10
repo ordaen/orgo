@@ -7,6 +7,13 @@ the API; breaking changes are listed under **Changed** or **Removed** and marked
 
 ## [Unreleased]
 
+## [v0.13.0] - 2026-11-10
+
+### Added
+
+- websocket: `NewChanRequest`, whose `AuthorizeRequestFunc` also gets the request that opened the connection, e.g.
+  to check the token against the client IP.
+
 ## [v0.12.0] - 2026-11-09
 
 ### Changed
@@ -144,7 +151,8 @@ the API; breaking changes are listed under **Changed** or **Removed** and marked
 
 The first tagged release.
 
-[Unreleased]: https://github.com/ordaen/orgo/compare/v0.12.0...HEAD
+[Unreleased]: https://github.com/ordaen/orgo/compare/v0.13.0...HEAD
+[v0.13.0]: https://github.com/ordaen/orgo/compare/v0.12.0...v0.13.0
 [v0.12.0]: https://github.com/ordaen/orgo/compare/v0.11.0...v0.12.0
 [v0.11.0]: https://github.com/ordaen/orgo/compare/v0.10.0...v0.11.0
 [v0.10.0]: https://github.com/ordaen/orgo/compare/v0.9.0...v0.10.0
