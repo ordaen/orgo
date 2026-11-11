@@ -7,6 +7,15 @@ the API; breaking changes are listed under **Changed** or **Removed** and marked
 
 ## [Unreleased]
 
+## [v0.14.0] - 2026-11-12
+
+### Added
+
+- pg: `ModelQuery.CountUpTo`, which counts the matching records up to a max, so a count over a big table costs at
+  most max rows.
+- gql: `Querier.CountLimit`, which makes `FindManyPaginated` count up to a limit: past it, the total is the limit and
+  the new `Pagination.TotalCapped` is true. Lists without it keep the exact count.
+
 ## [v0.13.1] - 2026-11-11
 
 ### Fixed
@@ -158,7 +167,8 @@ the API; breaking changes are listed under **Changed** or **Removed** and marked
 
 The first tagged release.
 
-[Unreleased]: https://github.com/ordaen/orgo/compare/v0.13.1...HEAD
+[Unreleased]: https://github.com/ordaen/orgo/compare/v0.14.0...HEAD
+[v0.14.0]: https://github.com/ordaen/orgo/compare/v0.13.1...v0.14.0
 [v0.13.1]: https://github.com/ordaen/orgo/compare/v0.13.0...v0.13.1
 [v0.13.0]: https://github.com/ordaen/orgo/compare/v0.12.0...v0.13.0
 [v0.12.0]: https://github.com/ordaen/orgo/compare/v0.11.0...v0.12.0
