@@ -7,6 +7,13 @@ the API; breaking changes are listed under **Changed** or **Removed** and marked
 
 ## [Unreleased]
 
+## [v0.13.1] - 2026-11-11
+
+### Fixed
+
+- logger, cron: the default sorts of `Log`, `CronLog` and `CronRecord` end with the id, so the pages of a paginated
+  list do not overlap or skip records with the same time or name.
+
 ## [v0.13.0] - 2026-11-10
 
 ### Added
@@ -151,7 +158,8 @@ the API; breaking changes are listed under **Changed** or **Removed** and marked
 
 The first tagged release.
 
-[Unreleased]: https://github.com/ordaen/orgo/compare/v0.13.0...HEAD
+[Unreleased]: https://github.com/ordaen/orgo/compare/v0.13.1...HEAD
+[v0.13.1]: https://github.com/ordaen/orgo/compare/v0.13.0...v0.13.1
 [v0.13.0]: https://github.com/ordaen/orgo/compare/v0.12.0...v0.13.0
 [v0.12.0]: https://github.com/ordaen/orgo/compare/v0.11.0...v0.12.0
 [v0.11.0]: https://github.com/ordaen/orgo/compare/v0.10.0...v0.11.0
