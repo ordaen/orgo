@@ -62,8 +62,8 @@ type CronLog struct {
 // TableName returns "cron_logs".
 func (m *CronLog) TableName() string { return "cron_logs" }
 
-// SortBy orders the logs by creation time, the last first.
-func (*CronLog) SortBy() string { return "created DESC" }
+// SortBy orders the logs by creation time, the last first, then by id so the pages of a list do not overlap.
+func (*CronLog) SortBy() string { return "created DESC, id DESC" }
 
 // SetRunning sets the status of the log running, it does not store it.
 func (m *CronLog) SetRunning() {

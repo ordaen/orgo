@@ -194,7 +194,7 @@ func TestOwner(t *testing.T) {
 	assert.Equal(t, "Volume", logs[1].OwnerType)
 	assert.Equal(t, "vol-1", logs[1].OwnerID)
 
-	assert.Equal(t, "created DESC", (&Log{}).SortBy(), "the gql querier lists the last first")
+	assert.Equal(t, "created DESC, id DESC", (&Log{}).SortBy(), "the gql querier lists the last first, in a stable order")
 }
 
 // TestCreateRecordError checks a failed create logs the model given, the returned one may be nil.

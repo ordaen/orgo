@@ -48,8 +48,9 @@ type Log struct {
 // TableName returns "logs".
 func (*Log) TableName() string { return "logs" }
 
-// SortBy orders the logs by creation time, the last first.
-func (*Log) SortBy() string { return "created DESC" }
+// SortBy orders the logs by creation time, the last first, then by id: the logs of one transaction have the same
+// time, the id keeps their order and the pages of a list do not overlap.
+func (*Log) SortBy() string { return "created DESC, id DESC" }
 
 // WithUser sets the user fields of the log to the user, a nil user leaves them unchanged.
 func (m *Log) WithUser(user *types.User) *Log {
