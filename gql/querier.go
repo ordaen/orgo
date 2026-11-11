@@ -34,13 +34,27 @@ func NewQuerier[T model.Model](store repo.Repository[T]) *Querier[T] {
 type Querier[T model.Model] struct {
 	store       repo.Repository[T]
 	whereScopes []QueryScope
+	countLimit  int
 }
 
 // Where returns a copy of the querier with the condition added to its scopes, the querier is not changed
 //
 //	q.Where("owner_id = ?", user.ID).Find(ctx, id)
 func (r *Querier[T]) Where(where string, args ...any) *Querier[T] {
-	return &Querier[T]{store: r.store, whereScopes: append(slices.Clip(r.whereScopes), QueryScope{Where: where, Args: args})}
+	c := *r
+	c.whereScopes = append(slices.Clip(r.whereScopes), QueryScope{Where: where, Args: args})
+	return &c
+}
+
+// CountLimit returns a copy of the querier whose FindManyPaginated counts the matching records up to limit: past
+// it, the total of the pagination is limit and TotalCapped is true. An exact count costs every matching row, use it
+// for the lists of tables that grow without bound, like logs. A limit that is not positive counts them all.
+//
+//	gql.NewQuerier(logger.Logs).CountLimit(10_000).FindManyPaginated(ctx, limit, page, sort)
+func (r *Querier[T]) CountLimit(limit int) *Querier[T] {
+	c := *r
+	c.countLimit = max(limit, 0)
+	return &c
 }
 
 // query starts a query of the records in the scopes, running with ctx.
@@ -181,7 +195,8 @@ func (r *Querier[T]) FindMany(ctx context.Context, limit *int, offset *int, sort
 }
 
 // FindManyPaginated returns the page of the records in the scopes matching the queries, see NewPagination.
-// sort is validated, see Sort.
+// sort is validated, see Sort. With a count limit, see CountLimit, the total is at most the limit; a page past the
+// limit has a next one when it is full.
 func (r *Querier[T]) FindManyPaginated(ctx context.Context, limit *int, page *int, sort *string, queries ...Where) (*PaginatedResponse[T], error) {
 	query, err := r.buildQuery(ctx, sort, queries)
 	if err != nil {
@@ -190,7 +205,15 @@ func (r *Querier[T]) FindManyPaginated(ctx context.Context, limit *int, page *in
 
 	pagination := NewPagination(page, limit)
 	offset := pagination.Offset()
-	pagination.Total, err = query.Count()
+	if r.countLimit > 0 {
+		// one more than the limit tells whether more records match
+		pagination.Total, err = query.CountUpTo(r.countLimit + 1)
+		if pagination.Total > r.countLimit {
+			pagination.Total, pagination.TotalCapped = r.countLimit, true
+		}
+	} else {
+		pagination.Total, err = query.Count()
+	}
 	if err != nil {
 		return nil, err
 	}
@@ -199,7 +222,7 @@ func (r *Querier[T]) FindManyPaginated(ctx context.Context, limit *int, page *in
 		return nil, err
 	}
 
-	if pagination.Total > offset+pagination.Limit {
+	if pagination.Total > offset+pagination.Limit || (pagination.TotalCapped && len(res) == pagination.Limit) {
 		pagination.HasNext = true
 		if len(res) > 0 {
 			pagination.NextCursor = res[len(res)-1].GetID().String()

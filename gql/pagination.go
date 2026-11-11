@@ -36,6 +36,9 @@ type Pagination struct {
 	HasNext     bool   `json:"hasNext"`
 	HasPrevious bool   `json:"hasPrevious"`
 	NextCursor  string `json:"nextCursor"`
+	// TotalCapped is true when more records match than the count limit of the querier, see Querier.CountLimit:
+	// Total is then the limit, not the number of records.
+	TotalCapped bool `json:"totalCapped"`
 }
 
 // Offset returns the offset for the pagination

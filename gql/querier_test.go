@@ -269,6 +269,46 @@ func TestFindManyPaginated(t *testing.T) {
 	assert.Error(t, err)
 }
 
+func TestFindManyPaginatedCountLimit(t *testing.T) {
+	seedItems(t, 25)
+	q := NewQuerier(items).CountLimit(12)
+	ctx := context.Background()
+
+	res, err := q.FindManyPaginated(ctx, new(10), new(1), new("name"))
+	require.NoError(t, err)
+	assert.Len(t, res.Items, 10)
+	assert.Equal(t, 12, res.Pagination.Total, "the total stops at the limit")
+	assert.True(t, res.Pagination.TotalCapped)
+	assert.True(t, res.Pagination.HasNext)
+
+	// past the limit, a full page has a next one
+	res, err = q.FindManyPaginated(ctx, new(10), new(2), new("name"))
+	require.NoError(t, err)
+	assert.Len(t, res.Items, 10)
+	assert.True(t, res.Pagination.TotalCapped)
+	assert.True(t, res.Pagination.HasNext)
+	assert.Equal(t, res.Items[9].ID.String(), res.Pagination.NextCursor)
+
+	res, err = q.FindManyPaginated(ctx, new(10), new(3), new("name"))
+	require.NoError(t, err)
+	assert.Len(t, res.Items, 5)
+	assert.False(t, res.Pagination.HasNext)
+
+	// the limit is kept by Where, the scopes are counted
+	res, err = q.Where("owner_id = ?", 1).FindManyPaginated(ctx, nil, nil, nil, Cond("active = ?", new(true)))
+	require.NoError(t, err)
+	assert.Equal(t, Pagination{Page: 1, Limit: 10, Total: 5, HasNext: false}, res.Pagination, "under the limit the total is exact")
+
+	res, err = NewQuerier(items).CountLimit(25).FindManyPaginated(ctx, nil, nil, nil)
+	require.NoError(t, err)
+	assert.Equal(t, 25, res.Pagination.Total)
+	assert.False(t, res.Pagination.TotalCapped, "exactly the limit is not capped")
+
+	res, err = NewQuerier(items).CountLimit(-1).FindManyPaginated(ctx, nil, nil, nil)
+	require.NoError(t, err)
+	assert.Equal(t, 25, res.Pagination.Total)
+}
+
 // customItems is a repository type with its own Delete, which the querier must call.
 type customItems struct {
 	repo.Base[*item]

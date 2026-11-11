@@ -131,6 +131,23 @@ func (q *ModelQuery[T]) Count() (int, error) {
 	return n, nil
 }
 
+// CountUpTo returns the number of matching records, at most max: it stops counting at max, so a count over a big
+// table costs at most max rows. Order, Limit and Offset are ignored. Without a positive max it is Count.
+func (q *ModelQuery[T]) CountUpTo(max int) (int, error) {
+	if max <= 0 {
+		return q.Count()
+	}
+	if q.err != nil {
+		return 0, q.err
+	}
+	sql, args := q.build("1", false)
+	var n int
+	if err := DB.QueryRow(orBackground(q.ctx), "SELECT COUNT(*) FROM ("+sql+" LIMIT "+strconv.Itoa(max)+") AS counted", args...).Scan(&n); err != nil {
+		return 0, Errorf("count %s: %w", q.tableName, err)
+	}
+	return n, nil
+}
+
 // Delete deletes the matching records without the model hooks and returns the number of deleted records.
 // Order is ignored. It returns an error without a condition, use ClearTables to delete all records,
 // and with Limit or Offset, which DELETE does not support.

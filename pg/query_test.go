@@ -211,6 +211,26 @@ func TestQueryFirstAndCount(t *testing.T) {
 	require.ErrorContains(t, err, "[PG] count base_models: ")
 }
 
+func TestQueryCountUpTo(t *testing.T) {
+	seedQuery(t)
+
+	n, err := Query(&baseModel{}).CountUpTo(2)
+	require.NoError(t, err)
+	assert.Equal(t, 2, n, "the count stops at max")
+
+	// the conditions are counted, order, limit and offset are not
+	n, err = Query(&baseModel{}).Where("name LIKE ?", "j%").Order("id").Limit(1).Offset(1).CountUpTo(10)
+	require.NoError(t, err)
+	assert.Equal(t, 3, n)
+
+	n, err = Query(&baseModel{}).CountUpTo(0)
+	require.NoError(t, err)
+	assert.Equal(t, 4, n, "without max it is Count")
+
+	_, err = Query(&baseModel{}).Where("missing_column = ?", 1).CountUpTo(5)
+	require.ErrorContains(t, err, "[PG] count base_models: ")
+}
+
 func TestQueryDelete(t *testing.T) {
 	setupHookTest(t)
 	for _, name := range []string{"john", "jane", "jack", "bob"} {
