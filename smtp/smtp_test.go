@@ -337,9 +337,8 @@ func TestSendTimeout(t *testing.T) {
 }
 
 func TestSendConnectError(t *testing.T) {
-	srv := newFakeServer(t)
-	conf := srv.settings()
-	srv.ln.Close()
+	// nothing listens on port 0; a closed listener still accepts connections until its Accept goroutine returns
+	conf := &Settings{Enabled: true, Host: "127.0.0.1", Port: "0", Timeout: 5}
 	assert.ErrorContains(t, newTestAgent(conf).Send(), "smtp: connect")
 }
 
