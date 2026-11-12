@@ -7,24 +7,26 @@ the API; breaking changes are listed under **Changed** or **Removed** and marked
 
 ## [Unreleased]
 
+## [v0.15.0] - 2026-11-12
+
 ### Added
 
 - handlers: a new package for REST controllers on gin, the port of the controllers of the core based apps.
-  A `Controller` groups actions under a path, a `Resource[T]` adds the default index, show, create, update and
-  delete actions over a `repo.Repository[T]`, with the writes logged by the user of the session. Controllers are
-  registered in a scope of a `Registry` and routed with `Registry.Routes`; `ActionOf` gives the middlewares the
-  controller and the action of the request, and the registry encodes as the API structure. An action gets a
-  `Ctx` with the request and builds the response, `RenderError` aborts a middleware with an error.
-  `Controller.CacheRecords` caches the index and show responses of a resource in `cacher.Cache`, cleared by the
-  writes of the handlers and the repository events, or by `ClearCache`. The middlewares `CheckIP` (the blocked
-  addresses of `sessions.BlockedIPs`) and `CORS` are gin handlers. There are
-  `ParseQuery` and `ApplyQuery`, which turn the URL query of a list request (`ids`, `limit`, `offset`, `sort`,
-  `fields`, `filter[…]`, `query[…]`, `time[…]`) into a `pg.ModelQuery`, with the columns checked against the model,
-  `Error`/`Errors`, the errors of the JSON responses with their HTTP status, and `Response`, the JSON document
-  `{data, meta, errors}`. `EncodeData` encodes only the fields asked by the client and adds the computed
-  fields of the models implementing `ModelWithExtraFields`. `DecodeRecord` sets the fields of a record from a
-  request body, without the fields with the json option `readonly` (or `createonly` on update), and returns
-  the changes and the changed columns for `logger.UpdateRecord`.
+  - `Controller` groups the actions of a path, `Resource[T]` adds the default index, show, create, update and
+    delete actions over a `repo.Repository[T]`, with the writes logged by the user of the session.
+  - `Registry` registers the controllers by scope, routes them with `Routes` and encodes as the API structure.
+    `ActionOf` gives the middlewares the controller and the action of the request.
+  - `Ctx` is the request of an action, which builds the response `{data, meta, errors}` (`Response`, `Errors`).
+    `RenderError` aborts a middleware with an error.
+  - `ParseQuery` and `ApplyQuery` turn the URL query of a list request (`ids`, `limit`, `offset`, `sort`,
+    `fields`, `filter[…]`, `query[…]`, `time[…]`) into a `pg.ModelQuery`, with the columns checked against
+    the model and the model hooks `SortBy`, `CustomQueries` and `CustomSort`.
+  - `EncodeData` encodes only the fields asked by the client and adds the computed fields of the models
+    implementing `ModelWithExtraFields`. `DecodeRecord` sets a record from a request body, without the fields
+    with the json option `readonly` (or `createonly` on update), and returns the changes and changed columns.
+  - `Controller.CacheRecords` caches the index and show responses in `cacher.Cache`, cleared by the writes of
+    the handlers, the repository events or `ClearCache`.
+  - The middlewares `CheckIP` (the addresses blocked in `sessions.BlockedIPs`) and `CORS`.
 - pg: `FieldColumn`, the column of a model field.
 
 ## [v0.14.0] - 2026-11-12
@@ -187,7 +189,8 @@ the API; breaking changes are listed under **Changed** or **Removed** and marked
 
 The first tagged release.
 
-[Unreleased]: https://github.com/ordaen/orgo/compare/v0.14.0...HEAD
+[Unreleased]: https://github.com/ordaen/orgo/compare/v0.15.0...HEAD
+[v0.15.0]: https://github.com/ordaen/orgo/compare/v0.14.0...v0.15.0
 [v0.14.0]: https://github.com/ordaen/orgo/compare/v0.13.1...v0.14.0
 [v0.13.1]: https://github.com/ordaen/orgo/compare/v0.13.0...v0.13.1
 [v0.13.0]: https://github.com/ordaen/orgo/compare/v0.12.0...v0.13.0
