@@ -16,7 +16,8 @@ the API; breaking changes are listed under **Changed** or **Removed** and marked
   controller and the action of the request, and the registry encodes as the API structure. An action gets a
   `Ctx` with the request and builds the response, `RenderError` aborts a middleware with an error.
   `Controller.CacheRecords` caches the index and show responses of a resource in `cacher.Cache`, cleared by the
-  writes of the handlers and the repository events, or by `ClearCache`. There are
+  writes of the handlers and the repository events, or by `ClearCache`. The middlewares `CheckIP` (the blocked
+  addresses of `sessions.BlockedIPs`) and `CORS` are gin handlers. There are
   `ParseQuery` and `ApplyQuery`, which turn the URL query of a list request (`ids`, `limit`, `offset`, `sort`,
   `fields`, `filter[…]`, `query[…]`, `time[…]`) into a `pg.ModelQuery`, with the columns checked against the model,
   `Error`/`Errors`, the errors of the JSON responses with their HTTP status, and `Response`, the JSON document
