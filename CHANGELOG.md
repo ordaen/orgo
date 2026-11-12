@@ -7,6 +7,13 @@ the API; breaking changes are listed under **Changed** or **Removed** and marked
 
 ## [Unreleased]
 
+### Added
+
+- handlers: a new package for REST controllers on gin, the port of the controllers of the core based apps. So far
+  it has `ParseQuery` and `ApplyQuery`, which turn the URL query of a list request (`ids`, `limit`, `offset`, `sort`,
+  `fields`, `filter[…]`, `query[…]`, `time[…]`) into a `pg.ModelQuery`, with the columns checked against the model,
+  and `Error`/`Errors`, the errors of the JSON responses with their HTTP status.
+
 ## [v0.14.0] - 2026-11-12
 
 ### Added
