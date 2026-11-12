@@ -9,8 +9,13 @@ the API; breaking changes are listed under **Changed** or **Removed** and marked
 
 ### Added
 
-- handlers: a new package for REST controllers on gin, the port of the controllers of the core based apps. So far
-  it has `ParseQuery` and `ApplyQuery`, which turn the URL query of a list request (`ids`, `limit`, `offset`, `sort`,
+- handlers: a new package for REST controllers on gin, the port of the controllers of the core based apps.
+  A `Controller` groups actions under a path, a `Resource[T]` adds the default index, show, create, update and
+  delete actions over a `repo.Repository[T]`, with the writes logged by the user of the session. Controllers are
+  registered in a scope of a `Registry` and routed with `Registry.Routes`; `ActionOf` gives the middlewares the
+  controller and the action of the request, and the registry encodes as the API structure. An action gets a
+  `Ctx` with the request and builds the response, `RenderError` aborts a middleware with an error. There are
+  `ParseQuery` and `ApplyQuery`, which turn the URL query of a list request (`ids`, `limit`, `offset`, `sort`,
   `fields`, `filter[…]`, `query[…]`, `time[…]`) into a `pg.ModelQuery`, with the columns checked against the model,
   `Error`/`Errors`, the errors of the JSON responses with their HTTP status, and `Response`, the JSON document
   `{data, meta, errors}`. `EncodeData` encodes only the fields asked by the client and adds the computed

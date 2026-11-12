@@ -7,14 +7,18 @@ import (
 	"testing"
 
 	"github.com/joho/godotenv"
+	"github.com/ordaen/orgo/logger"
 	"github.com/ordaen/orgo/model"
 	"github.com/ordaen/orgo/pg"
+	"github.com/ordaen/orgo/sessions"
 )
 
 func TestMain(m *testing.M) {
 	if err := godotenv.Load("../.env_test"); err != nil {
 		log.Fatalln("Error loading env configuration", err)
 	}
+	// the cached repositories of sessions are loaded on connect
+	sessions.RegisterSchema()
 	if err := pg.Connect(pg.Config{
 		DatabaseName: os.Getenv("DATABASE_NAME"),
 		Username:     os.Getenv("DATABASE_USER"),
@@ -25,7 +29,7 @@ func TestMain(m *testing.M) {
 		log.Fatalln("Error opening database connection: ", err)
 	}
 	// the tables are created again, so every run starts with their current definitions
-	for _, sql := range []string{`DROP TABLE IF EXISTS items;`, createItems} {
+	for _, sql := range []string{`DROP TABLE IF EXISTS items;`, createItems, `DROP TABLE IF EXISTS logs;`, logger.SQLSchema} {
 		if _, err := pg.DB.Exec(context.Background(), sql); err != nil {
 			log.Fatalln("Error executing SQL: ", err)
 		}
