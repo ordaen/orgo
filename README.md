@@ -87,6 +87,7 @@ orgo also includes smaller packages that are built on the ones above or support 
 | `sessions`  | Cached user sessions and blocked IP addresses and networks               |
 | `logger`    | Audit logs of user actions with their changes                            |
 | `gql`       | Helpers for GraphQL resolvers served with gin                           |
+| `handlers`  | REST controllers on gin: CRUD resources with list queries and JSON responses |
 | `validator` | Collecting validation errors and returning them together                 |
 
 There are also small utilities for configuration (`config`, `env`), encryption at rest (`crypt`), email
