@@ -158,12 +158,15 @@ func (c *Ctx) SetFields(fields []string) {
 	c.Resp.SetFields(fields)
 }
 
-// render writes the JSON response, nothing when the action wrote the response.
-func (c *Ctx) render() {
+const jsonContentType = "application/json; charset=utf-8"
+
+// response returns the status and the JSON of the response, no JSON for 204. ok is false when the action wrote
+// the response or aborted the request.
+func (c *Ctx) response() (code int, b []byte, ok bool) {
 	if c.Gin.Writer.Written() || c.Gin.IsAborted() {
-		return
+		return 0, nil, false
 	}
-	code := c.ResponseCode
+	code = c.ResponseCode
 	switch {
 	case c.Resp.HasErrors():
 		if code < 400 {
@@ -173,16 +176,14 @@ func (c *Ctx) render() {
 		code = 200
 	}
 	if code == 204 {
-		c.Gin.Status(code)
-		c.Gin.Writer.WriteHeaderNow()
-		return
+		return code, nil, true
 	}
 	b, err := json.Marshal(&c.Resp)
 	if err != nil {
 		logs.Error(err, "handlers: encode the response")
 		code, b = errorJSON(ErrorInternal("cannot encode the response"))
 	}
-	c.Gin.Data(code, "application/json; charset=utf-8", b)
+	return code, b, true
 }
 
 // RenderError writes the JSON response of the error and aborts the request, for the middlewares:
@@ -193,7 +194,7 @@ func (c *Ctx) render() {
 //	}
 func RenderError(g *gin.Context, err error) {
 	code, b := errorJSON(err)
-	g.Data(code, "application/json; charset=utf-8", b)
+	g.Data(code, jsonContentType, b)
 	g.Abort()
 }
 

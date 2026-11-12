@@ -91,6 +91,7 @@ func CreateRecord[T model.Model](c *Ctx, r repo.Repository[T]) (T, bool) {
 		c.AddError(writeError(err, "create in "+r.TableName()))
 		return zero, false
 	}
+	ClearCache(r.TableName())
 	return created, true
 }
 
@@ -117,6 +118,7 @@ func UpdateRecord[T model.Model](c *Ctx, r repo.Repository[T], rec T) (T, bool) 
 		c.AddError(writeError(err, "update in "+r.TableName()))
 		return zero, false
 	}
+	ClearCache(r.TableName())
 	return updated, true
 }
 
@@ -127,6 +129,7 @@ func DeleteRecord[T model.Model](c *Ctx, r repo.Repository[T], rec T) bool {
 		c.AddError(writeError(err, "delete in "+r.TableName()))
 		return false
 	}
+	ClearCache(r.TableName())
 	return true
 }
 

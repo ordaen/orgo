@@ -37,6 +37,7 @@ type registrable interface {
 type resource interface {
 	defaultAction(name string) func(*Ctx)
 	hasRepo() bool
+	cacheOf(scope string, h *Handle) *responseCache
 }
 
 // Register registers the controller in the scope of the Default registry, see Registry.Register.
@@ -71,6 +72,9 @@ func (r *Registry) Register(scope string, c registrable) {
 		}
 		if h.Func == nil {
 			panic(fmt.Sprintf("handlers: action %q of controller %s has no Func", h.Name, typeName))
+		}
+		if ctr.CacheRecords && isResource {
+			h.cache = res.cacheOf(scope, h)
 		}
 		for _, prev := range ctr.Actions[:i] {
 			if prev.Method == h.Method && prev.Path == h.Path {
@@ -170,9 +174,28 @@ func ActionOf(g *gin.Context) (controller, action string) {
 // handler returns the handler running the action and rendering its response.
 func (c *Controller) handler(h *Handle) gin.HandlerFunc {
 	return func(g *gin.Context) {
+		uri := g.Request.URL.RequestURI()
+		if h.cache != nil {
+			if b := h.cache.get(uri); b != nil {
+				g.Data(200, jsonContentType, b)
+				return
+			}
+		}
 		x := &Ctx{Gin: g, controller: c}
 		h.Func(x)
-		x.render()
+		code, b, ok := x.response()
+		if !ok {
+			return
+		}
+		if code == 204 {
+			g.Status(code)
+			g.Writer.WriteHeaderNow()
+			return
+		}
+		g.Data(code, jsonContentType, b)
+		if h.cache != nil && code == 200 {
+			h.cache.set(uri, b)
+		}
 	}
 }
 

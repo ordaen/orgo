@@ -29,8 +29,11 @@ type Handle struct {
 	Input         any        `json:"-"`
 	Output        any        `json:"-"`
 	Func          func(*Ctx) `json:"-"`
+	// NoCache leaves the action out of the cached responses of Controller.CacheRecords.
+	NoCache bool `json:"-"`
 
 	middles []gin.HandlerFunc
+	cache   *responseCache
 }
 
 // Middlewares adds middlewares run before the action, after the middlewares of the controller.
@@ -60,6 +63,11 @@ type Controller struct {
 	Actions []Handle `json:"actions,omitempty"`
 	// MaxRecords is the maximum limit of the list queries, unlimited when it is 0.
 	MaxRecords int `json:"-"`
+	// CacheRecords caches the successful responses of the index and show actions of a Resource in
+	// cacher.Cache, when it is initialized, by request URI. They are cleared when the records change, see
+	// ClearCache. The middlewares run before the cache, but the responses must not depend on the user:
+	// the scopes of AddWhereScope can only depend on the URL.
+	CacheRecords bool `json:"-"`
 
 	middles []gin.HandlerFunc
 	scope   string
@@ -175,4 +183,17 @@ func (r *Resource[T]) defaultAction(name string) func(*Ctx) {
 // hasRepo reports whether Repo is set.
 func (r *Resource[T]) hasRepo() bool {
 	return r.Repo != nil
+}
+
+// cacheOf returns the response cache of the action of the scope: of index and show only.
+func (r *Resource[T]) cacheOf(scope string, h *Handle) *responseCache {
+	if h.NoCache || h.Method != "GET" || h.Name != "index" && h.Name != "show" {
+		return nil
+	}
+	rc := &responseCache{scope: scope, kind: "recs", table: r.Repo.TableName()}
+	if h.Name == "show" {
+		rc.kind = "rec"
+	}
+	cacheTable(scope, rc.table, modelTypeOf[T]())
+	return rc
 }
