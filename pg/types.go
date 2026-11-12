@@ -58,6 +58,24 @@ func HasColumn[T any](column string) bool {
 	return globalCache.getModelInfo(t).getField(column) != nil
 }
 
+// FieldColumn returns the column of the field of the model type T, a struct or a pointer to it, at the index
+// path of reflect.Value.FieldByIndex, and whether the field is mapped to a column.
+func FieldColumn[T any](index []int) (string, bool) {
+	t := reflect.TypeFor[T]()
+	if t.Kind() == reflect.Pointer {
+		t = t.Elem()
+	}
+	if t.Kind() != reflect.Struct {
+		return "", false
+	}
+	for _, f := range globalCache.getModelInfo(t).fields {
+		if slices.Equal(f.idx, index) {
+			return f.name, true
+		}
+	}
+	return "", false
+}
+
 type structCache struct {
 	types sync.Map // reflect.Type -> *modelInfo
 }

@@ -271,3 +271,18 @@ func TestHasColumn(t *testing.T) {
 	assert.False(t, HasColumn[*baseModel]("name; DROP TABLE x"))
 	assert.False(t, HasColumn[int]("id"))
 }
+
+func TestFieldColumn(t *testing.T) {
+	col, ok := FieldColumn[*baseModel]([]int{1})
+	assert.True(t, ok)
+	assert.Equal(t, "name", col)
+	col, ok = FieldColumn[baseModel]([]int{0, 1})
+	assert.True(t, ok)
+	assert.Equal(t, "created", col, "the fields of the embedded structs")
+	_, ok = FieldColumn[*baseModel]([]int{0})
+	assert.False(t, ok, "an embedded struct is not a column")
+	_, ok = FieldColumn[*baseModel]([]int{9})
+	assert.False(t, ok)
+	_, ok = FieldColumn[int]([]int{0})
+	assert.False(t, ok)
+}

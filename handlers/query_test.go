@@ -118,7 +118,7 @@ func TestApplyQuery(t *testing.T) {
 		"query[name]=ALP":               {1, 5},
 		"query[name]=_":                 {4}, // the wildcards are matched literally
 		"query[name]=alp&query[ip]=192": {1, 5, 4},
-		"time[from]=2026-01-02T00:00:00Z&time[to]=2026-01-04T00:00:00Z":      {2, 3},
+		"time[from]=2026-01-02T00:00:00Z&time[to]=2026-01-04T00:00:00Z":     {2, 3},
 		"time[column]=updated&time[from]=2000-01-01T00:00:00Z&filter[id]=3": {3},
 	} {
 		ids, err := queryIDs(t, &item{}, raw)

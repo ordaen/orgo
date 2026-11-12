@@ -12,7 +12,12 @@ the API; breaking changes are listed under **Changed** or **Removed** and marked
 - handlers: a new package for REST controllers on gin, the port of the controllers of the core based apps. So far
   it has `ParseQuery` and `ApplyQuery`, which turn the URL query of a list request (`ids`, `limit`, `offset`, `sort`,
   `fields`, `filter[…]`, `query[…]`, `time[…]`) into a `pg.ModelQuery`, with the columns checked against the model,
-  and `Error`/`Errors`, the errors of the JSON responses with their HTTP status.
+  `Error`/`Errors`, the errors of the JSON responses with their HTTP status, and `Response`, the JSON document
+  `{data, meta, errors}`. `EncodeData` encodes only the fields asked by the client and adds the computed
+  fields of the models implementing `ModelWithExtraFields`. `DecodeRecord` sets the fields of a record from a
+  request body, without the fields tagged `api:"readonly"` (or `api:"createonly"` on update), and returns
+  the changes and the changed columns for `logger.UpdateRecord`.
+- pg: `FieldColumn`, the column of a model field.
 
 ## [v0.14.0] - 2026-11-12
 
