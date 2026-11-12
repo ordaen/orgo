@@ -5,6 +5,7 @@ import (
 
 	"github.com/ordaen/orgo/changes"
 	"github.com/ordaen/orgo/model"
+	"github.com/ordaen/orgo/types"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -17,8 +18,8 @@ type jsonInner struct {
 type jsonItem struct {
 	model.Base[model.ID]
 	Name    string            `json:"name"`
-	Total   int               `json:"total" api:"readonly"`
-	Kind    string            `json:"kind" api:"createonly"`
+	Total   int               `json:"total,readonly"`  //nolint:staticcheck // an option of DecodeRecord
+	Kind    string            `json:"kind,createonly"` //nolint:staticcheck // an option of DecodeRecord
 	Tags    []string          `json:"tags"`
 	Meta    map[string]string `json:"meta"`
 	Count   uint64            `json:"count,string"`
@@ -26,6 +27,7 @@ type jsonItem struct {
 	Inner   jsonInner         `json:"inner"`
 	OwnerID model.ID          `json:"owner_id"`
 	Virtual string            `json:"virtual" db:"-"`
+	types.UserFields
 }
 
 func (*jsonItem) TableName() string     { return "json_items" }
@@ -105,10 +107,11 @@ func TestDecodeRecordUnchanged(t *testing.T) {
 
 func TestDecodeRecordCreate(t *testing.T) {
 	rec := &jsonItem{}
-	_, cols, err := DecodeRecord([]byte(`{"name": "n", "kind": "k", "total": 3}`), rec, true)
+	_, cols, err := DecodeRecord([]byte(`{"name": "n", "kind": "k", "total": 3, "user_id": "9"}`), rec, true)
 	require.NoError(t, err)
 	assert.Equal(t, "k", rec.Kind, "createonly is set on create")
 	assert.Equal(t, 0, rec.Total, "readonly")
+	assert.Equal(t, model.ID(0), rec.UserID, "readonly in types.UserFields")
 	assert.Equal(t, []string{"name", "kind"}, cols)
 }
 

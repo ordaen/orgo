@@ -137,8 +137,8 @@ func filterObject(obj []byte, fields []string, extra ModelWithExtraFields) ([]by
 }
 
 // DecodeRecord sets the fields of rec from the JSON object body. It returns the changes of the fields, keyed by
-// their JSON names, and the columns of the changed fields, for logger.UpdateRecord. The fields tagged
-// `api:"readonly"` are never set, the fields tagged `api:"createonly"` only when create is true,
+// their JSON names, and the columns of the changed fields, for logger.UpdateRecord. The fields with the json
+// option readonly, like `json:"total,readonly"`, are never set, the fields with createonly only when create is true,
 // and neither are the id and the created and updated timestamps. The other keys of body are ignored.
 //
 // Each value is decoded into a new value of its field, so the slices and maps of rec are not modified, they can
@@ -227,7 +227,7 @@ type jsonField struct {
 	idx   []int
 	typ   reflect.Type
 	depth int
-	// readonly and createonly are the options of the api tag
+	// readonly and createonly are the options of the json tag
 	readonly   bool
 	createonly bool
 	// quoted is set by the string option: the value is encoded in a JSON string
@@ -288,13 +288,14 @@ func collectJSONFields(t reflect.Type, base []int, depth int, list []jsonField, 
 			name = sf.Name
 		}
 		f := jsonField{name: name, idx: idx, typ: sf.Type, depth: depth}
-		f.quoted = slices.Contains(strings.Split(opts, ","), "string")
-		for opt := range strings.SplitSeq(sf.Tag.Get("api"), ",") {
+		for opt := range strings.SplitSeq(opts, ",") {
 			switch opt {
 			case "readonly":
 				f.readonly = true
 			case "createonly":
 				f.createonly = true
+			case "string":
+				f.quoted = true
 			}
 		}
 		_, dbOpts, _ := strings.Cut(sf.Tag.Get("db"), ",")

@@ -15,7 +15,7 @@ the API; breaking changes are listed under **Changed** or **Removed** and marked
   `Error`/`Errors`, the errors of the JSON responses with their HTTP status, and `Response`, the JSON document
   `{data, meta, errors}`. `EncodeData` encodes only the fields asked by the client and adds the computed
   fields of the models implementing `ModelWithExtraFields`. `DecodeRecord` sets the fields of a record from a
-  request body, without the fields tagged `api:"readonly"` (or `api:"createonly"` on update), and returns
+  request body, without the fields with the json option `readonly` (or `createonly` on update), and returns
   the changes and the changed columns for `logger.UpdateRecord`.
 - pg: `FieldColumn`, the column of a model field.
 
