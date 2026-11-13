@@ -12,7 +12,7 @@ import (
 )
 
 // Records is the repository of the job records, in cron_records.
-var Records = repo.Register(&cronRecords{})
+var Records = repo.Register(&cronRecords{}, repo.WithEvents())
 
 type cronRecords struct {
 	repo.Base[*CronRecord]

@@ -6,7 +6,7 @@ import (
 )
 
 // LogMessages is the repository of the messages of the job runs, in cron_log_messages.
-var LogMessages = repo.Register(&cronLogMessages{})
+var LogMessages = repo.Register(&cronLogMessages{}, repo.WithEvents())
 
 type cronLogMessages struct {
 	repo.Base[*CronLogMessage]

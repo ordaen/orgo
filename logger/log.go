@@ -98,8 +98,11 @@ func (m *Log) WithOwner(ownerType, id string) *Log {
 	return m
 }
 
-// Create stores the log.
+// Create stores the log and sets it to the stored record, so it gets its ID.
 func (m *Log) Create() error {
-	_, err := Logs.Create(m)
+	res, err := Logs.Create(m)
+	if err == nil && res != nil {
+		*m = *res
+	}
 	return err
 }

@@ -86,10 +86,15 @@ func TestSessionsByUser(t *testing.T) {
 	assert.Nil(t, Sessions.FindByUser(nil))
 	assert.Nil(t, Sessions.FindByUser(&types.User{ID: model.ID(5)}))
 
+	stranger := &types.User{ID: model.ID(2), Type: "admins", IP: "1.1.1.1"}
+	_, err = Sessions.CreateSession(stranger, "login", 1)
+	require.NoError(t, err)
+
 	require.NoError(t, Sessions.DeleteByUser(user))
 	require.NoError(t, Sessions.DeleteByUser(nil))
 	assert.Nil(t, Sessions.FindByUser(user))
-	assert.NotNil(t, Sessions.FindByUser(other))
+	assert.Nil(t, Sessions.FindByUser(other), "the sessions of every IP address")
+	assert.NotNil(t, Sessions.FindByUser(stranger))
 	assert.Equal(t, 1, Sessions.Count())
 }
 

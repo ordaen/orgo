@@ -102,6 +102,8 @@ func (c *connection) handle(message []byte) {
 		c.subscribeCollections(msg)
 	case "subscribe":
 		c.subscribeModels(msg)
+	case "unsubscribe":
+		c.unsubscribeModels(msg)
 	case "list-users":
 		c.enqueue(c.hub.usersPackage())
 	default:
@@ -195,6 +197,22 @@ func (c *connection) subscribeModels(msg messageIn) {
 	c.mu.Lock()
 	for k, v := range msg.Models {
 		c.subscribedModels.set(k, v...)
+	}
+	c.mu.Unlock()
+}
+
+// unsubscribeModels removes the subscriptions of the models of msg, the keys of its models, or of every model when
+// it has none, like a page left: {"cmd": "unsubscribe", "models": {"orders": []}}.
+func (c *connection) unsubscribeModels(msg messageIn) {
+	if !c.authorized() {
+		return
+	}
+	c.mu.Lock()
+	if len(msg.Models) == 0 {
+		clear(c.subscribedModels)
+	}
+	for k := range msg.Models {
+		delete(c.subscribedModels, k)
 	}
 	c.mu.Unlock()
 }

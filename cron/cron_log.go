@@ -16,7 +16,7 @@ var (
 )
 
 // Logs is the repository of the job runs, in cron_logs.
-var Logs = repo.Register(&cronLogs{})
+var Logs = repo.Register(&cronLogs{}, repo.WithEvents())
 
 type cronLogs struct {
 	repo.Base[*CronLog]

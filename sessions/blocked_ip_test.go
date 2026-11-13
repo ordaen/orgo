@@ -193,6 +193,20 @@ func TestBlockedIPsWrites(t *testing.T) {
 	assert.Empty(t, BlockedIPs.List())
 }
 
+// TestBlockedIPsWithContext writes through the copy of WithContext, like the handlers do: the snapshot sees it.
+func TestBlockedIPsWithContext(t *testing.T) {
+	clearTables(t, "blocked_ips")
+	r := BlockedIPs.WithContext(t.Context())
+	block, err := r.Create(&BlockedIP{IP: "198.51.100.0/24"})
+	require.NoError(t, err)
+	_, ok := BlockedIPs.IsBlocked("198.51.100.7")
+	assert.True(t, ok, "created through the copy")
+
+	require.NoError(t, r.Delete(block))
+	_, ok = BlockedIPs.IsBlocked("198.51.100.7")
+	assert.False(t, ok, "deleted through the copy")
+}
+
 func TestIsBlockedIPv6(t *testing.T) {
 	clearTables(t, "blocked_ips")
 	_, err := BlockIP("2001:db8::/32", 0, "v6")

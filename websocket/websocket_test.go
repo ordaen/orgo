@@ -244,6 +244,26 @@ func TestSendObjectID(t *testing.T) {
 	unsubscribed.assertNoMessage()
 }
 
+func TestUnsubscribe(t *testing.T) {
+	h, url := newTestChan(t)
+	h.DisableUsers = true
+	c := dial(t, url)
+	c.authorize(1)
+	c.cmd("subscribe", map[string]any{"models": map[string][]string{"orders": {"5"}, "users": {"1"}}})
+	c.cmd("unsubscribe", map[string]any{"models": map[string][]string{"orders": {}}})
+	c.cmd("ping", nil)
+	assert.Equal(t, "pong", c.read())
+	h.SendObjectID("update", "orders", "5")
+	h.SendObjectID("update", "users", "1")
+	assert.Equal(t, `{"chan":"update","data":{"name":"users","data":{"id":"1"}}}`, c.read(), "only the orders dropped")
+
+	c.cmd("unsubscribe", nil)
+	c.cmd("ping", nil)
+	assert.Equal(t, "pong", c.read())
+	h.SendObjectID("update", "users", "1")
+	c.assertNoMessage()
+}
+
 func TestSubscribeRequiresAuthorization(t *testing.T) {
 	h, url := newTestChan(t)
 	h.DisableUsers = true

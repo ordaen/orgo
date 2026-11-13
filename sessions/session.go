@@ -61,13 +61,13 @@ func (c *sessionsStore) FindByUser(user *types.User) *Session {
 	})
 }
 
-// DeleteByUser deletes the sessions of the user
+// DeleteByUser deletes the sessions of the user from every IP address, logging the user out everywhere.
 func (c *sessionsStore) DeleteByUser(user *types.User) error {
 	if user == nil {
 		return nil
 	}
 	return c.deleteMatching(func(s *Session) bool {
-		return s.ofUser(user)
+		return s.UserID == user.ID && s.UserType == user.Type
 	})
 }
 
@@ -161,6 +161,7 @@ func (m *Session) expiredAt(now time.Time) bool {
 	return now.After(m.Expires)
 }
 
+// ofUser reports whether the session is the user's from the user's IP address.
 func (m *Session) ofUser(user *types.User) bool {
 	return m.UserID == user.ID && m.UserType == user.Type && m.UserIP == user.IP
 }

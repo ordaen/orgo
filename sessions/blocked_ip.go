@@ -17,17 +17,28 @@ import (
 )
 
 // BlockedIPs is the cached repository of the blocked addresses and networks, matched by its IsBlocked method.
-var BlockedIPs = repo.RegisterCached(&blockedIPsStore{})
+var BlockedIPs = repo.RegisterCached(&blockedIPsStore{state: &blocksState{}})
 
 // blockedIPsStore caches the blocks in memory. IsBlocked matches the parsed networks of a snapshot, rebuilt after
 // every write through the repository and by Reload, so it does not query the database. The blocks written by other
-// processes are seen after Reload, which is called on connect too.
+// processes are seen after Reload, which is called on connect too. The copies of WithContext share the snapshot.
 type blockedIPsStore struct {
 	repo.Cached[*BlockedIP]
 
+	state *blocksState
+}
+
+// blocksState is the snapshot of a blockedIPsStore, shared by its copies.
+type blocksState struct {
 	// mu orders the snapshot rebuilds, so the last stored snapshot is built from the latest cache
 	mu       sync.Mutex
 	snapshot atomic.Pointer[[]blockEntry]
+}
+
+// WithContext returns a copy of the repository running its queries with ctx, see repo.Cached.WithContext. The
+// copy shares the cache and the snapshot, so its writes are seen by IsBlocked.
+func (c *blockedIPsStore) WithContext(ctx context.Context) repo.Repository[*BlockedIP] {
+	return repo.WithContext(c, ctx)
 }
 
 // blockEntry is a block with its parsed network.
@@ -70,8 +81,8 @@ func (c *blockedIPsStore) Delete(m *BlockedIP) error {
 
 // rebuild builds the snapshot from the cached blocks.
 func (c *blockedIPsStore) rebuild() {
-	c.mu.Lock()
-	defer c.mu.Unlock()
+	c.state.mu.Lock()
+	defer c.state.mu.Unlock()
 	recs := c.FindManyCached(func(*BlockedIP) bool { return true })
 	entries := make([]blockEntry, 0, len(recs))
 	for _, rec := range recs {
@@ -80,12 +91,12 @@ func (c *blockedIPsStore) rebuild() {
 			entries = append(entries, blockEntry{prefix: prefix, block: rec})
 		}
 	}
-	c.snapshot.Store(&entries)
+	c.state.snapshot.Store(&entries)
 }
 
 // entries returns the blocks of the snapshot, they must not be changed.
 func (c *blockedIPsStore) entries() []blockEntry {
-	if e := c.snapshot.Load(); e != nil {
+	if e := c.state.snapshot.Load(); e != nil {
 		return *e
 	}
 	return nil

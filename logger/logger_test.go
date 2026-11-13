@@ -59,12 +59,15 @@ func TestCreate(t *testing.T) {
 
 func TestInfo(t *testing.T) {
 	require.NoError(t, pg.ClearTables("logs"))
-	Info("action1").Create()
+	l := Info("action1")
+	require.NoError(t, l.Create())
 	count, err := pg.Count("logs")
 	require.NoError(t, err)
 	assert.Equal(t, 1, count)
 	r, err := pg.Query(new(Log)).First()
 	require.NoError(t, err)
+	assert.Equal(t, r.ID, l.ID, "Create sets the stored record")
+	assert.False(t, l.Created.IsZero())
 	assert.Equal(t, INFO, r.Level)
 	assert.Equal(t, "system", r.Source)
 	assert.Equal(t, "action1", r.Action)
