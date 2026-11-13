@@ -7,6 +7,23 @@ the API; breaking changes are listed under **Changed** or **Removed** and marked
 
 ## [Unreleased]
 
+## [v0.16.0] - 2026-11-13
+
+### Added
+
+- websocket: the `unsubscribe` command drops the subscriptions of the models sent, or of all models without any.
+- cron: `Records`, `Logs` and `LogMessages` publish their changes (`repo.WithEvents`), for live job pages.
+
+### Changed
+
+- **Breaking** sessions: `DeleteByUser` deletes the sessions of the user from every IP address, it matched the
+  user's IP too and did not log the user out everywhere.
+
+### Fixed
+
+- sessions: the copy of `BlockedIPs.WithContext` shares the snapshot of `IsBlocked`, its writes left it stale.
+- logger: `Log.Create` sets the log to the stored record, which had no ID.
+
 ## [v0.15.0] - 2026-11-12
 
 ### Added
@@ -190,6 +207,7 @@ the API; breaking changes are listed under **Changed** or **Removed** and marked
 The first tagged release.
 
 [Unreleased]: https://github.com/ordaen/orgo/compare/v0.15.0...HEAD
+[v0.16.0]: https://github.com/ordaen/orgo/compare/v0.15.0...v0.16.0
 [v0.15.0]: https://github.com/ordaen/orgo/compare/v0.14.0...v0.15.0
 [v0.14.0]: https://github.com/ordaen/orgo/compare/v0.13.1...v0.14.0
 [v0.13.1]: https://github.com/ordaen/orgo/compare/v0.13.0...v0.13.1
