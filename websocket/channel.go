@@ -218,9 +218,21 @@ func (h *Chan) SendObjectID(action, name, id string) {
 	}
 }
 
-// LogoutUser sends logout to the authorized connections of the user
+// LogoutUser sends logout to the authorized connections of the user, then takes back their authorization: they
+// get no more messages, whatever the client does, until they authorize again with a valid token.
 func (h *Chan) LogoutUser(id model.ID) {
-	h.send(socketPacket{Chan: "logout"}, id)
+	if !id.Valid() {
+		return
+	}
+	conns := h.targets(func(c *connection) bool { return c.userID() == id })
+	data := mustMarshal(socketPacket{Chan: "logout"})
+	for _, c := range conns {
+		c.enqueue(data)
+		c.deauthorize()
+	}
+	if len(conns) > 0 {
+		h.updateUsers()
+	}
 }
 
 func (h *Chan) send(p socketPacket, uid model.ID) {

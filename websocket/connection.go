@@ -156,6 +156,16 @@ func (c *connection) authorize(msg messageIn) {
 	}
 }
 
+// deauthorize drops the user of the connection and its subscriptions.
+func (c *connection) deauthorize() {
+	c.mu.Lock()
+	defer c.mu.Unlock()
+	c.user = nil
+	c.page = ""
+	c.subscribedModels = make(subscribedModels)
+	c.collections = nil
+}
+
 func (c *connection) authorized() bool {
 	c.mu.RLock()
 	defer c.mu.RUnlock()

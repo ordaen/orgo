@@ -190,6 +190,15 @@ func TestSendToUser(t *testing.T) {
 		assert.Equal(t, `{"chan":"logout"}`, c.read())
 	}
 	other.assertNoMessage()
+
+	// the logged out connections get nothing more, even when the client ignores the logout
+	h.SendString("after")
+	assert.Equal(t, "after", other.read())
+	first.assertNoMessage()
+	second.assertNoMessage()
+	first.authorize(1)
+	h.SendToUserChannel(model.ID(1), "private", "again")
+	assert.Equal(t, `{"chan":"private","data":"again"}`, first.read(), "a new authorization works")
 }
 
 // TestPing checks the pong is sent to the pinging connection only.
