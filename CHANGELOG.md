@@ -7,6 +7,13 @@ the API; breaking changes are listed under **Changed** or **Removed** and marked
 
 ## [Unreleased]
 
+## [v0.16.1] - 2026-11-14
+
+### Fixed
+
+- websocket: `LogoutUser` takes back the authorization of the user's connections after sending the logout, so a
+  client ignoring it gets no more messages until it authorizes again.
+
 ## [v0.16.0] - 2026-11-13
 
 ### Added
@@ -207,6 +214,7 @@ the API; breaking changes are listed under **Changed** or **Removed** and marked
 The first tagged release.
 
 [Unreleased]: https://github.com/ordaen/orgo/compare/v0.15.0...HEAD
+[v0.16.1]: https://github.com/ordaen/orgo/compare/v0.16.0...v0.16.1
 [v0.16.0]: https://github.com/ordaen/orgo/compare/v0.15.0...v0.16.0
 [v0.15.0]: https://github.com/ordaen/orgo/compare/v0.14.0...v0.15.0
 [v0.14.0]: https://github.com/ordaen/orgo/compare/v0.13.1...v0.14.0
