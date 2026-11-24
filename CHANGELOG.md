@@ -7,6 +7,18 @@ the API; breaking changes are listed under **Changed** or **Removed** and marked
 
 ## [Unreleased]
 
+## [v0.17.0] - 2026-11-24
+
+### Removed
+
+- **Breaking** websocket: the unknown commands of an authorized connection are ignored, they were relayed to every
+  other authorized connection: any user could send the others a message of the server (a logout, an update).
+
+### Fixed
+
+- websocket: `list-users` answers the authorized connections only, it listed the connected users before
+  `authorize`.
+
 ## [v0.16.1] - 2026-11-14
 
 ### Fixed
@@ -213,7 +225,8 @@ the API; breaking changes are listed under **Changed** or **Removed** and marked
 
 The first tagged release.
 
-[Unreleased]: https://github.com/ordaen/orgo/compare/v0.15.0...HEAD
+[Unreleased]: https://github.com/ordaen/orgo/compare/v0.17.0...HEAD
+[v0.17.0]: https://github.com/ordaen/orgo/compare/v0.16.1...v0.17.0
 [v0.16.1]: https://github.com/ordaen/orgo/compare/v0.16.0...v0.16.1
 [v0.16.0]: https://github.com/ordaen/orgo/compare/v0.15.0...v0.16.0
 [v0.15.0]: https://github.com/ordaen/orgo/compare/v0.14.0...v0.15.0
