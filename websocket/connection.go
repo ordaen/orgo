@@ -105,12 +105,13 @@ func (c *connection) handle(message []byte) {
 	case "unsubscribe":
 		c.unsubscribeModels(msg)
 	case "list-users":
-		c.enqueue(c.hub.usersPackage())
-	default:
-		// the other messages of the authorized connections are relayed to the other authorized connections
+		// the users connected are for the authorized connections only
 		if c.authorized() {
-			c.hub.broadcast(message, 0, c)
+			c.enqueue(c.hub.usersPackage())
 		}
+	default:
+		// the other messages are ignored: relayed, any user could send the others a message of the server
+		// (a logout, an update)
 	}
 }
 

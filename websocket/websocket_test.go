@@ -212,21 +212,18 @@ func TestPing(t *testing.T) {
 	other.assertNoMessage()
 }
 
-// TestRelay checks the unknown commands of the authorized connections are relayed to the other authorized ones.
-func TestRelay(t *testing.T) {
+// TestNoRelay ignores the unknown commands: relayed, any user could send the others a message of the server.
+func TestNoRelay(t *testing.T) {
 	h, url := newTestChan(t)
 	h.DisableUsers = true
-	sender, receiver, anonymous := dial(t, url), dial(t, url), dial(t, url)
+	sender, receiver := dial(t, url), dial(t, url)
 	sender.authorize(1)
 	receiver.authorize(2)
 
-	anonymous.cmd("chat", map[string]any{"data": "spam"})
-	receiver.assertNoMessage()
-
+	sender.cmd("logout", map[string]any{"chan": "logout"})
 	sender.cmd("chat", map[string]any{"data": "hi"})
-	assert.JSONEq(t, `{"cmd":"chat","data":"hi"}`, receiver.read())
+	receiver.assertNoMessage()
 	sender.assertNoMessage()
-	anonymous.assertNoMessage()
 }
 
 func TestSendObjectID(t *testing.T) {
@@ -303,6 +300,10 @@ func TestUsers(t *testing.T) {
 
 	first.cmd("list-users", nil)
 	assert.JSONEq(t, `{"chan":"users","data":{"name":"users","data":[{"id":"1","name":"User 1"}]}}`, first.read())
+
+	anonymous := dial(t, url)
+	anonymous.cmd("list-users", nil)
+	anonymous.assertNoMessage()
 }
 
 func TestDisconnectRemovesConnection(t *testing.T) {

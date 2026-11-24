@@ -11,7 +11,8 @@
 //
 // The browser sends commands as JSON objects {"cmd": name, ...}: "authorize" with the token as data, "subscribe"
 // with models {name: [ids]} (replacing the IDs of each model sent), "unsubscribe" with the models to drop (all
-// of them when none), "subscribeCollections" with collections [names], "set-path", "list-users" and "ping".
+// of them when none), "subscribeCollections" with collections [names], "set-path", "list-users" (authorized
+// connections only) and "ping". Other commands are ignored.
 package websocket
 
 import (
