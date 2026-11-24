@@ -250,6 +250,33 @@ func TestSendObjectID(t *testing.T) {
 	unsubscribed.assertNoMessage()
 }
 
+// TestAllow sends the messages of a model only to the users Allow allows, the channel messages to everyone.
+func TestAllow(t *testing.T) {
+	h, url := newTestChan(t)
+	h.DisableUsers = true
+	h.Allow = func(uid model.ID, name string) bool { return uid == 1 && name == "orders" }
+	allowed, other := dial(t, url), dial(t, url)
+	allowed.authorize(1)
+	other.authorize(2)
+	for _, c := range []*client{allowed, other} {
+		c.cmd("subscribeCollections", map[string]any{"collections": []string{"orders", "invoices"}})
+		c.cmd("ping", nil)
+		assert.Equal(t, "pong", c.read())
+	}
+
+	h.SendObjectID("update", "orders", "6")
+	h.SendObject("create", "orders", nil)
+	h.SendObject("create", "invoices", nil)
+	h.SendObjectToUser(2, "create", "orders", nil)
+	h.SendToChannel("info", 1)
+	assert.Equal(t, `{"chan":"update","data":{"name":"orders","data":{"id":"6"}}}`, allowed.read())
+	assert.Equal(t, `{"chan":"create","data":{"name":"orders"}}`, allowed.read())
+	assert.Equal(t, `{"chan":"info","data":1}`, allowed.read())
+	assert.Equal(t, `{"chan":"info","data":1}`, other.read(), "only the channel message")
+	allowed.assertNoMessage()
+	other.assertNoMessage()
+}
+
 func TestUnsubscribe(t *testing.T) {
 	h, url := newTestChan(t)
 	h.DisableUsers = true

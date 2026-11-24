@@ -70,6 +70,10 @@ type Chan struct {
 	MaxMessageSize int64
 	// SendQueue is the number of messages queued for a connection, DefaultSendQueue when it is 0
 	SendQueue int
+	// Allow, when set, tells whether the user may get the messages of the model name (SendObject,
+	// SendObjectToUser, SendObjectID): the user's role in the application. Without it every authorized
+	// connection gets them. It is called under the lock of the connections: it must not call the Chan.
+	Allow func(userID model.ID, name string) bool
 
 	auth        AuthorizeRequestFunc
 	mu          sync.RWMutex
@@ -200,23 +204,44 @@ func (h *Chan) SendToChannel(channel string, obj any) {
 	h.send(socketPacket{Chan: channel, Data: obj}, 0)
 }
 
-// SendObject sends the named obj in the channel to all authorized connections
+// SendObject sends the named obj in the channel to all authorized connections the Allow of the name allows
 func (h *Chan) SendObject(channel, name string, obj any) {
-	h.send(socketPacket{Chan: channel, Data: packetObj{Name: name, Data: obj}}, 0)
+	h.sendObject(socketPacket{Chan: channel, Data: packetObj{Name: name, Data: obj}}, name, 0)
 }
 
-// SendObjectToUser sends the named obj in the channel to the authorized connections of the user
+// SendObjectToUser sends the named obj in the channel to the authorized connections of the user, when the
+// Allow of the name allows the user
 func (h *Chan) SendObjectToUser(uid model.ID, channel, name string, obj any) {
-	h.send(socketPacket{Chan: channel, Data: packetObj{Name: name, Data: obj}}, uid)
+	h.sendObject(socketPacket{Chan: channel, Data: packetObj{Name: name, Data: obj}}, name, uid)
 }
 
 // SendObjectID sends the action on the model name with the id to the connections subscribed to it,
-// by the subscribe command or to its collection by the subscribeCollections command
+// by the subscribe command or to its collection by the subscribeCollections command, the Allow of the name allows
 func (h *Chan) SendObjectID(action, name, id string) {
 	data := mustMarshal(socketPacket{Chan: action, Data: packetObj{Name: name, Data: ider{ID: id}}})
-	for _, c := range h.targets(func(c *connection) bool { return c.hasModel(name, id) }) {
+	for _, c := range h.targets(func(c *connection) bool { return c.hasModel(name, id) && h.allowed(c, name) }) {
 		c.enqueue(data)
 	}
+}
+
+// sendObject sends the packet of the model name to the authorized connections the Allow of the name allows, of
+// the user uid or of all users when it is not valid.
+func (h *Chan) sendObject(p socketPacket, name string, uid model.ID) {
+	data, err := json.Marshal(p)
+	if err != nil {
+		logs.Error(err, "[WEBSOCKET] marshal "+p.Chan+":")
+		return
+	}
+	for _, c := range h.targets(func(c *connection) bool {
+		return (!uid.Valid() || c.userID() == uid) && h.allowed(c, name)
+	}) {
+		c.enqueue(data)
+	}
+}
+
+// allowed tells whether the connection may get the messages of the model name, see Allow.
+func (h *Chan) allowed(c *connection, name string) bool {
+	return h.Allow == nil || h.Allow(c.userID(), name)
 }
 
 // LogoutUser sends logout to the authorized connections of the user, then takes back their authorization: they
