@@ -7,6 +7,13 @@ the API; breaking changes are listed under **Changed** or **Removed** and marked
 
 ## [Unreleased]
 
+## [v0.18.0] - 2026-11-24
+
+### Added
+
+- websocket: `Chan.Allow` tells whether a user may get the messages of a model (`SendObject`, `SendObjectToUser`,
+  `SendObjectID`), for the roles of the application; without it every authorized connection gets them.
+
 ## [v0.17.0] - 2026-11-24
 
 ### Removed
@@ -225,7 +232,8 @@ the API; breaking changes are listed under **Changed** or **Removed** and marked
 
 The first tagged release.
 
-[Unreleased]: https://github.com/ordaen/orgo/compare/v0.17.0...HEAD
+[Unreleased]: https://github.com/ordaen/orgo/compare/v0.18.0...HEAD
+[v0.18.0]: https://github.com/ordaen/orgo/compare/v0.17.0...v0.18.0
 [v0.17.0]: https://github.com/ordaen/orgo/compare/v0.16.1...v0.17.0
 [v0.16.1]: https://github.com/ordaen/orgo/compare/v0.16.0...v0.16.1
 [v0.16.0]: https://github.com/ordaen/orgo/compare/v0.15.0...v0.16.0
