@@ -7,6 +7,17 @@ the API; breaking changes are listed under **Changed** or **Removed** and marked
 
 ## [Unreleased]
 
+## [v0.19.0] - 2026-11-24
+
+### Added
+
+- actions: the actions run by users (an install, a restart, a bulk change), recorded in the `action_logs` table
+  with their issuer, request, tasks, progress and messages, and published (`repo.WithEvents`). `Action` runs its
+  tasks in order, saving the log after each, in the caller's goroutine (`Run`) or in its own (`Start`); a failed
+  task cancels the next ones (`KeepGoing` runs them all), `ErrSkip` skips one, `Exclusive` refuses a second action
+  of the same record, `After` runs a function at the end. `FailUnfinished` fails the logs left running by a
+  stopped application, `DeleteBefore` removes old ones. From ara's `app/actions`, without its `client_id`.
+
 ## [v0.18.0] - 2026-11-24
 
 ### Added
@@ -232,7 +243,8 @@ the API; breaking changes are listed under **Changed** or **Removed** and marked
 
 The first tagged release.
 
-[Unreleased]: https://github.com/ordaen/orgo/compare/v0.18.0...HEAD
+[Unreleased]: https://github.com/ordaen/orgo/compare/v0.19.0...HEAD
+[v0.19.0]: https://github.com/ordaen/orgo/compare/v0.18.0...v0.19.0
 [v0.18.0]: https://github.com/ordaen/orgo/compare/v0.17.0...v0.18.0
 [v0.17.0]: https://github.com/ordaen/orgo/compare/v0.16.1...v0.17.0
 [v0.16.1]: https://github.com/ordaen/orgo/compare/v0.16.0...v0.16.1
