@@ -20,8 +20,8 @@ orgo requires Go 1.27 or later and PostgreSQL.
 plain structs, to table rows by their fields.
 
 - The tables and functions are registered with `pg.Schema`, usually in `init` functions, and created by `pg.Connect`.
-  The orgo packages with tables (`cron`, `files`, `logger`, `sessions`, `settings`, `statuser`, and `gql` for
-  the tables it uses) register them with their `RegisterSchema` function, called before `pg.Connect`.
+  The orgo packages with tables (`actions`, `cron`, `files`, `logger`, `sessions`, `settings`, `statuser`, and
+  `gql` for the tables it uses) register them with their `RegisterSchema` function, called before `pg.Connect`.
 - `pg.Config.Schema` is created when it is missing and set as the `search_path` of every connection.
 - `pg.Insert`, `pg.UpdateModel`, `pg.DeleteModel` and `pg.Query` write and query models.
 - Models can implement hooks (`BeforeCreate`, `AfterUpdate`, …) that run inside the write transaction.
@@ -86,6 +86,7 @@ orgo also includes smaller packages that are built on the ones above or support 
 | `settings`  | Application settings structs stored as JSON in the `settings` table      |
 | `sessions`  | Cached user sessions and blocked IP addresses and networks               |
 | `logger`    | Audit logs of user actions with their changes                            |
+| `actions`   | Actions run by users as tasks in order, logged live with their status and progress |
 | `gql`       | Helpers for GraphQL resolvers served with gin                           |
 | `handlers`  | REST controllers on gin: CRUD resources with list queries and JSON responses |
 | `validator` | Collecting validation errors and returning them together                 |
